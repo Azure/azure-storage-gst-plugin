@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.0)
-project(gstreamer-helloworld VERSION 0.1.0)
+project(azure-storage-gst-plugin VERSION 0.1.0)
 
 include(CTest)
 enable_testing()
@@ -28,11 +28,13 @@ link_libraries(
     ${GLIB_LIBRARIES}
     ${GSTREAMER_LIBRARIES}
     /usr/local/lib/libazure-storage-lite.so
-    ${OPENSSL_LIBRARIES}
+    ${OPENSSL_LIBRARIcES}
     ${LIBCURL_LIBRARIES}
 )
 
-add_executable(gstreamer-helloworld main.cpp utils.cpp utils.h)
+file(GLOB SOURCE_FILES *.cpp *.h)
+
+add_executable(azure-storage-gst-plugin-test ${SOURCE_FILES})
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})

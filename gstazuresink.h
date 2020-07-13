@@ -20,6 +20,7 @@
 #ifndef _GST_AZURE_SINK_H_
 #define _GST_AZURE_SINK_H_
 #include <gst/base/gstbasesink.h>
+#include "gstazuresinkconfig.h"
 
 G_BEGIN_DECLS
 
@@ -35,7 +36,8 @@ typedef struct _GstAzureSinkClass GstAzureSinkClass;
 struct _GstAzureSink
 {
   GstBaseSink base_azuresink;
-
+  GstPad *sinkpad;
+  GstAzureSinkConfig config;
 };
 
 struct _GstAzureSinkClass

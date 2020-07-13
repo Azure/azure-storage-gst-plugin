@@ -24,6 +24,11 @@ int main(int argc, char** argv) {
     auto storage_account = make_shared<azure::storage_lite::storage_account>(account_name, credential, use_https);
     azure::storage_lite::blob_client client(storage_account, 16);
     // Start using
+    auto r1 = client.get_blob_properties("videostore", "teststream");
+    r1.wait();
+    auto rr1 = r1.get();
+    handle(rr1);
+    
     std::cout << "Creating test stream..." << std::endl;
     auto result = client.create_append_blob("videostore", "teststream");
     result.wait();
