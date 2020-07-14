@@ -55,29 +55,29 @@ static void gst_azure_sink_finalize (GObject * object);
 static GstCaps *gst_azure_sink_get_caps (GstBaseSink * sink, GstCaps * filter);
 static gboolean gst_azure_sink_set_caps (GstBaseSink * sink, GstCaps * caps);
 static GstCaps *gst_azure_sink_fixate (GstBaseSink * sink, GstCaps * caps);
-static gboolean gst_azure_sink_activate_pull (GstBaseSink * sink, gboolean active);
-static void gst_azure_sink_get_times (GstBaseSink * sink, GstBuffer * buffer,
-    GstClockTime * start, GstClockTime * end);
-static gboolean gst_azure_sink_propose_allocation (GstBaseSink * sink,
-    GstQuery * query);
+// static gboolean gst_azure_sink_activate_pull (GstBaseSink * sink, gboolean active);
+// static void gst_azure_sink_get_times (GstBaseSink * sink, GstBuffer * buffer,
+//     GstClockTime * start, GstClockTime * end);
+// static gboolean gst_azure_sink_propose_allocation (GstBaseSink * sink,
+//     GstQuery * query);
 static gboolean gst_azure_sink_start (GstBaseSink * sink);
 static gboolean gst_azure_sink_stop (GstBaseSink * sink);
-static gboolean gst_azure_sink_unlock (GstBaseSink * sink);
-static gboolean gst_azure_sink_unlock_stop (GstBaseSink * sink);
+// static gboolean gst_azure_sink_unlock (GstBaseSink * sink);
+// static gboolean gst_azure_sink_unlock_stop (GstBaseSink * sink);
 static gboolean gst_azure_sink_query (GstBaseSink * sink, GstQuery * query);
 static gboolean gst_azure_sink_event (GstBaseSink * sink, GstEvent * event);
-static GstFlowReturn gst_azure_sink_wait_event (GstBaseSink * sink,
-    GstEvent * event);
-static GstFlowReturn gst_azure_sink_prepare (GstBaseSink * sink,
-    GstBuffer * buffer);
-static GstFlowReturn gst_azure_sink_prepare_list (GstBaseSink * sink,
-    GstBufferList * buffer_list);
-static GstFlowReturn gst_azure_sink_preroll (GstBaseSink * sink,
-    GstBuffer * buffer);
+// static GstFlowReturn gst_azure_sink_wait_event (GstBaseSink * sink,
+//     GstEvent * event);
+// static GstFlowReturn gst_azure_sink_prepare (GstBaseSink * sink,
+//     GstBuffer * buffer);
+// static GstFlowReturn gst_azure_sink_prepare_list (GstBaseSink * sink,
+//     GstBufferList * buffer_list);
+// static GstFlowReturn gst_azure_sink_preroll (GstBaseSink * sink,
+//     GstBuffer * buffer);
 static GstFlowReturn gst_azure_sink_render (GstBaseSink * sink,
     GstBuffer * buffer);
-static GstFlowReturn gst_azure_sink_render_list (GstBaseSink * sink,
-    GstBufferList * buffer_list);
+// static GstFlowReturn gst_azure_sink_render_list (GstBaseSink * sink,
+//     GstBufferList * buffer_list);
 
 enum
 {
@@ -128,21 +128,21 @@ gst_azure_sink_class_init (GstAzureSinkClass * klass)
   base_sink_class->get_caps = GST_DEBUG_FUNCPTR (gst_azure_sink_get_caps);
   base_sink_class->set_caps = GST_DEBUG_FUNCPTR (gst_azure_sink_set_caps);
   base_sink_class->fixate = GST_DEBUG_FUNCPTR (gst_azure_sink_fixate);
-  base_sink_class->activate_pull = GST_DEBUG_FUNCPTR (gst_azure_sink_activate_pull);
-  base_sink_class->get_times = GST_DEBUG_FUNCPTR (gst_azure_sink_get_times);
-  base_sink_class->propose_allocation = GST_DEBUG_FUNCPTR (gst_azure_sink_propose_allocation);
+  // base_sink_class->activate_pull = GST_DEBUG_FUNCPTR (gst_azure_sink_activate_pull);
+  // base_sink_class->get_times = GST_DEBUG_FUNCPTR (gst_azure_sink_get_times);
+  // base_sink_class->propose_allocation = GST_DEBUG_FUNCPTR (gst_azure_sink_propose_allocation);
   base_sink_class->start = GST_DEBUG_FUNCPTR (gst_azure_sink_start);
   base_sink_class->stop = GST_DEBUG_FUNCPTR (gst_azure_sink_stop);
-  base_sink_class->unlock = GST_DEBUG_FUNCPTR (gst_azure_sink_unlock);
-  base_sink_class->unlock_stop = GST_DEBUG_FUNCPTR (gst_azure_sink_unlock_stop);
+  // base_sink_class->unlock = GST_DEBUG_FUNCPTR (gst_azure_sink_unlock);
+  // base_sink_class->unlock_stop = GST_DEBUG_FUNCPTR (gst_azure_sink_unlock_stop);
   base_sink_class->query = GST_DEBUG_FUNCPTR (gst_azure_sink_query);
   base_sink_class->event = GST_DEBUG_FUNCPTR (gst_azure_sink_event);
-  base_sink_class->wait_event = GST_DEBUG_FUNCPTR (gst_azure_sink_wait_event);
-  base_sink_class->prepare = GST_DEBUG_FUNCPTR (gst_azure_sink_prepare);
-  base_sink_class->prepare_list = GST_DEBUG_FUNCPTR (gst_azure_sink_prepare_list);
-  base_sink_class->preroll = GST_DEBUG_FUNCPTR (gst_azure_sink_preroll);
+  // base_sink_class->wait_event = GST_DEBUG_FUNCPTR (gst_azure_sink_wait_event);
+  // base_sink_class->prepare = GST_DEBUG_FUNCPTR (gst_azure_sink_prepare);
+  // base_sink_class->prepare_list = GST_DEBUG_FUNCPTR (gst_azure_sink_prepare_list);
+  // base_sink_class->preroll = GST_DEBUG_FUNCPTR (gst_azure_sink_preroll);
   base_sink_class->render = GST_DEBUG_FUNCPTR (gst_azure_sink_render);
-  base_sink_class->render_list = GST_DEBUG_FUNCPTR (gst_azure_sink_render_list);
+  // base_sink_class->render_list = GST_DEBUG_FUNCPTR (gst_azure_sink_render_list);
 
   g_object_class_install_property (gobject_class, PROP_ACCOUNT_NAME,
     g_param_spec_string ("account-name", "azure account name",
@@ -180,7 +180,6 @@ gst_azure_sink_init (GstAzureSink *azuresink)
   gst_base_sink_set_sync(GST_BASE_SINK(azuresink), FALSE);
 }
 
-// FIXME implement this
 void
 gst_azure_sink_set_property (GObject * object, guint property_id,
     const GValue * value, GParamSpec * pspec)
@@ -204,11 +203,11 @@ gst_azure_sink_set_property (GObject * object, guint property_id,
       break;
     case PROP_CONTAINER_NAME:
       gst_azure_sink_set_string_property(azuresink, value,
-        &azuresink->config.container_name, "container-name")
+        &azuresink->config.container_name, "container-name");
       break;
     case PROP_BLOB_NAME:
       gst_azure_sink_set_string_property(azuresink, value,
-        &azuresink->config.blob_name, "blob-name")
+        &azuresink->config.blob_name, "blob-name");
       break;
     case PROP_BUFFER_COUNT:
       gst_azure_sink_set_uint_property(azuresink, value,
@@ -323,6 +322,7 @@ gst_azure_sink_fixate (GstBaseSink * sink, GstCaps * caps)
   return NULL;
 }
 
+// not included
 /* start or stop a pulling thread */
 static gboolean
 gst_azure_sink_activate_pull (GstBaseSink * sink, gboolean active)
@@ -334,6 +334,7 @@ gst_azure_sink_activate_pull (GstBaseSink * sink, gboolean active)
   return TRUE;
 }
 
+// not included
 /* get the start and end times for syncing on this buffer */
 static void
 gst_azure_sink_get_times (GstBaseSink * sink, GstBuffer * buffer,
@@ -345,6 +346,7 @@ gst_azure_sink_get_times (GstBaseSink * sink, GstBuffer * buffer,
 
 }
 
+// not included
 /* propose allocation parameters for upstream */
 static gboolean
 gst_azure_sink_propose_allocation (GstBaseSink * sink, GstQuery * query)
@@ -409,9 +411,43 @@ gst_azure_sink_unlock_stop (GstBaseSink * sink)
 static gboolean
 gst_azure_sink_query (GstBaseSink * sink, GstQuery * query)
 {
+  gboolean ret = FALSE;
   GstAzureSink *azuresink = GST_AZURE_SINK (sink);
 
   GST_DEBUG_OBJECT (azuresink, "query");
+
+  switch(GST_QUERY_TYPE(query)) {
+    case GST_QUERY_FORMATS:
+      gst_query_set_formats(query, 2, GST_FORMAT_DEFAULT, GST_FORMAT_BYTES);
+      ret = TRUE;
+      break;
+    case GST_QUERY_POSITION:
+    {
+      GstFormat format;
+      gst_query_parse_position(query, &format, NULL);
+      switch(format) {
+        case GST_FORMAT_DEFAULT:
+        case GST_FORMAT_BYTES:
+          // FIXME return total bytes written here
+          break;
+        default:
+          break;
+      }
+      break;
+    }
+    case GST_QUERY_SEEKING:
+    {
+      // this sink is not seekable
+      GstFormat format;
+      gst_query_parse_seeking(query, &format, NULL, NULL, NULL);
+      gst_query_set_seeking(query, &format, FALSE, 0, -1);
+      ret = TRUE;
+      break;
+    }
+    default:
+      ret = GST_BASE_SINK_CLASS(azuresink)->query(sink, query);
+      break;
+  }
 
   return TRUE;
 }
@@ -423,11 +459,18 @@ gst_azure_sink_event (GstBaseSink * sink, GstEvent * event)
   GstAzureSink *azuresink = GST_AZURE_SINK (sink);
 
   GST_DEBUG_OBJECT (azuresink, "event");
+  
+  GstEventType type = GST_EVENT_TYPE(event);
+
+  switch(type) {
+    case GST_EVENT_EOS:
+      // FIXME flush all buffer
+  }
 
   return TRUE;
 }
 
-// TODO implement this
+// we do not need this since we do not have multiple sinks
 /* wait for eos or gap, subclasses should chain up to parent first */
 static GstFlowReturn
 gst_azure_sink_wait_event (GstBaseSink * sink, GstEvent * event)
@@ -475,13 +518,24 @@ static GstFlowReturn
 gst_azure_sink_render (GstBaseSink * sink, GstBuffer * buffer)
 {
   GstAzureSink *azuresink = GST_AZURE_SINK (sink);
+  GstFlowReturn ret;
+  guint8 n_mem;
 
   GST_DEBUG_OBJECT (azuresink, "render");
 
-  return GST_FLOW_OK;
+  guint8 n_mem = gst_buffer_n_memory(buffer);
+
+  if(n_mem > 0) {
+    // FIXME fill buffer
+  } else {
+    ret = GST_FLOW_OK;
+  }
+
+  return ret;
 }
 
 /* Render a BufferList */
+// TODO maybe implement this
 static GstFlowReturn
 gst_azure_sink_render_list (GstBaseSink * sink, GstBufferList * buffer_list)
 {
