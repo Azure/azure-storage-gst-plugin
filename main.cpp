@@ -1,8 +1,8 @@
 #include <sstream>
-Azureu#include <iostream>
-#include <memory>
+#include <iostream>
+#include <chrono>
+#include <thread>
 
-// #include <gstreamer-1.0/gst/gst.h>
 #include "storage_credential.h"
 #include "storage_account.h"
 #include "blob/blob_client.h"
@@ -13,8 +13,7 @@ Azureu#include <iostream>
 
 #include "utils.h"
 
-using std::make_shared;
-
+using namespace std::chrono_literals;
 int main(int argc, char** argv) {
   // settings
   std::string account_name = "gstvideostore";
@@ -26,6 +25,8 @@ int main(int argc, char** argv) {
   auto loc = uploader.init("videostore", "teststream");
   uploader.upload(loc, "asdfasdfasdf", 12);
   uploader.upload(loc, "hahaha", 6);
+  std::this_thread::sleep_for(2s);
+  uploader.upload(loc, "heiheihei", 9);
   uploader.flush(loc);
   uploader.destroy(loc);
   return 0;

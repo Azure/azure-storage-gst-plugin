@@ -4,12 +4,12 @@ using namespace azure::storage_lite;
 
 // error handling
 template <typename T>
-void handle(storage_outcome<T> &outcome) {
+void handle(storage_outcome<T> &outcome, std::ostream &out = std::cerr) {
     if(outcome.success()) {
-        std::cout << "Request succeeded." << std::endl;
+        out << "Request succeeded." << std::endl;
     } else {
-        std::cout << "Request failed." << std::endl;
-        std::cout << outcome.error().code << '(' << outcome.error().code_name << ')' << std::endl;
-        std::cout << outcome.error().message << std::endl;
+        out << "Request failed." << std::endl;
+        out << outcome.error().code << '(' << outcome.error().code_name << ')' << std::endl;
+        out << outcome.error().message << std::endl;
     }
 }

@@ -2,7 +2,7 @@
 
 // FIXME use a specific logger
 #include <iostream>
-
+#include <iomanip>
 #include "azureuploader.hpp"
 #include "utils.h"
 
@@ -10,23 +10,29 @@ namespace gst {
 namespace azure {
 namespace storage {
 
+std::ostream &UploadWorker::log()
+{
+  return std::cerr << '[' << std::hex << worker.get_id() << ']' << std::dec;
+}
+
 // individual uploader logics
 bool UploadWorker::append(UploadBuffer buffer)
 {
-  std::cerr << "Thread id " << worker.get_id() << " appending, length = " << buffer.second << std::endl;
+  log() << "Appending, length = " << buffer.second << std::endl;
   const std::lock_guard<std::mutex> lock(new_lock);
   stream.write(buffer.first, buffer.second);
+  finished = false;
   new_cond.notify_all();
 }
 
 // FIXME avoid memory copy
 void UploadWorker::run()
 {
-  std::cerr << "Worker is running, thread id is " << worker.get_id() << std::endl;
+  log() << "Worker is running." << std::endl;
   // first create the blob
   auto fut = client->create_append_blob(loc->first, loc->second);
   auto result = fut.get();
-  handle(result);
+  handle(result, log());
   
   while(!stopped)
   {
@@ -48,27 +54,21 @@ void UploadWorker::run()
     stream.seekg(0, std::ios_base::end);
     auto end = stream.tellg();
     stream.seekg(cur);
-    std::cerr << "Uploading content, length = " << static_cast<unsigned int>(end - cur) << std::endl;
+    log() << "Uploading content, length = " << static_cast<unsigned int>(end - cur) << std::endl;
     // re-commit the stream object and transfer it
     auto fut = this->client->append_block_from_stream(loc->first, loc->second, stream);
     fut.wait();
     auto result = fut.get();
-    if(!result.success())
-    {
-      std::cerr << "Warning result failed." << std::endl;
-      std::cerr << result.error().code << "(" << result.error().code_name << std::endl;
-      std::cerr << result.error().message << std::endl;
-      // we don't have to handle it as it will remain in the buffer
-    }
+    handle(result, log());
   }
   // exit if stopped
-  std::cerr << "Worker is exiting, thread id is " << worker.get_id() << std::endl;
+  log() << "Worker is exiting." << std::endl;
 }
 
 void UploadWorker::flush()
 {
   // wait for the whole stream to complete uploading
-  std::cerr << "Flushing thread id" << worker.get_id() << std::endl;
+  log() << "Flushing." << std::endl;
   std::unique_lock<std::mutex> lk(finish_lock);
   finish_cond.wait(lk, [this] { return this->finished; });
   lk.unlock();
@@ -76,7 +76,7 @@ void UploadWorker::flush()
 
 void UploadWorker::stop()
 {
-  std::cerr << "Stopping worker id " << worker.get_id() << std::endl;
+  log() << "Stopping." << std::endl;
   stopped = true;
   new_cond.notify_all();
   worker.join();
@@ -126,7 +126,7 @@ AzureUploader::flush(std::shared_ptr<AzureUploadLocation> loc)
   auto worker_iter = uploads.find(loc);
   // wait for specific location to flush
   if(worker_iter == uploads.end()) {
-    std::cerr << "Flushing a non-existent location."
+    std::cerr << "Warning: flushing a non-existent location."
       << (loc->first) << ' ' << (loc->second) << std::endl;
     return true;
   }

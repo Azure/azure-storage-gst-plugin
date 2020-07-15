@@ -36,6 +36,8 @@ public:
   void run();
   void flush();
   void stop();
+private:
+  std::ostream &log();
 };
 
 const int AZURE_CLIENT_CONCCURRENCY = 8;
