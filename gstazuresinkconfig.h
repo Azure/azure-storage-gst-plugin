@@ -22,7 +22,7 @@ typedef struct {
     .account_key = NULL, \
     .container_name = NULL, \
     .blob_name = NULL, \
-    .blob_endpoint = NULL, \ 
+    .blob_endpoint = NULL, \
     .buffer_size = AZURE_SINK_DEFAULT_BUFFER_SIZE, \
     .buffer_count = AZURE_SINK_DEFAULT_BUFFER_COUNT, \
 }

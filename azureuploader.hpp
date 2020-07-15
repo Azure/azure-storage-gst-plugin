@@ -8,8 +8,6 @@
 #include <mutex>
 #include <condition_variable>
 
-#include "utils.h"
-
 #include "storage_credential.h"
 #include "storage_account.h"
 #include "blob/blob_client.h"
@@ -31,18 +29,21 @@ class UploadWorker {
   bool stopped;
   std::shared_ptr<::azure::storage_lite::blob_client> client;
 public:
-  UploadWorker(std::shared_ptr<::azure::storage_lite::blob_client> client):
-    client(client), worker([this] { this->run(); }) {}
+  UploadWorker(std::shared_ptr<AzureUploadLocation> loc,
+    std::shared_ptr<::azure::storage_lite::blob_client> client):
+    loc(loc), client(client), worker([this] { this->run(); }) {}
   bool append(UploadBuffer buffer);
   void run();
   void flush();
-  void stop() { stopped = true; }
+  void stop();
 };
+
+const int AZURE_CLIENT_CONCCURRENCY = 8;
 
 class AzureUploader {
 private:
   std::shared_ptr<::azure::storage_lite::blob_client> client;
-  std::map<std::shared_ptr<AzureUploadLocation>, UploadWorker> uploads;
+  std::map<std::shared_ptr<AzureUploadLocation>, std::unique_ptr<UploadWorker>> uploads;
 public:
   AzureUploader(const char *account_name, const char *account_key, bool use_https);
   std::shared_ptr<AzureUploadLocation> init(const char *container_name, const char *blob_name);

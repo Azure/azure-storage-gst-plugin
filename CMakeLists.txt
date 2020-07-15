@@ -8,6 +8,9 @@ enable_testing()
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+# set debug build type
+set(CMAKE_BUILD_TYPE Debug)
+
 # use PkgConfig to configure gstreamer & azure storage cpp sdk
 find_package(PkgConfig)
 # use pkg-config to get Gstreamer
@@ -30,6 +33,7 @@ link_libraries(
     /usr/local/lib/libazure-storage-lite.so
     ${OPENSSL_LIBRARIcES}
     ${LIBCURL_LIBRARIES}
+    pthread
 )
 
 file(GLOB SOURCE_FILES *.cpp *.h)
