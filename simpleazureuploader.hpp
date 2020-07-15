@@ -1,5 +1,5 @@
-#ifndef AZURE_SINK_UPLOADER_H
-#define AZURE_SINK_UPLAODER_H
+#ifndef AZURE_SINK_SIMPLE_UPLOADER_H
+#define AZURE_SINK_SIMPLE_UPLOADER_H
 
 #include <map>
 #include <utility>
@@ -42,12 +42,12 @@ private:
 
 const int AZURE_CLIENT_CONCCURRENCY = 8;
 
-class AzureUploader {
+class SimpleAzureUploader {
 private:
   std::shared_ptr<::azure::storage_lite::blob_client> client;
   std::map<std::shared_ptr<AzureUploadLocation>, std::unique_ptr<UploadWorker>> uploads;
 public:
-  AzureUploader(const char *account_name, const char *account_key, bool use_https);
+  SimpleAzureUploader(const char *account_name, const char *account_key, bool use_https);
   std::shared_ptr<AzureUploadLocation> init(const char *container_name, const char *blob_name);
   bool upload(std::shared_ptr<AzureUploadLocation> loc, const char *data, size_t size);
   bool flush(std::shared_ptr<AzureUploadLocation> loc);

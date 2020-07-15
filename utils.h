@@ -1,4 +1,8 @@
+#ifndef _GST_AZURE_SINK_CPP_UTILS_H_
+#define _GST_AZURE_SINK_CPP_UTILS_H_
+
 #include <storage_outcome.h>
+#include <gst/gst.h>
 
 using namespace azure::storage_lite;
 
@@ -13,3 +17,5 @@ void handle(storage_outcome<T> &outcome, std::ostream &out = std::cerr) {
         out << outcome.error().message << std::endl;
     }
 }
+
+#endif

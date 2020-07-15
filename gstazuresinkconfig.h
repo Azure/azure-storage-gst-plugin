@@ -12,6 +12,7 @@ typedef struct {
     gchar *container_name;
     gchar *blob_name;
     gchar *blob_endpoint;
+    gboolean use_https;
 
     gsize buffer_size;
     gsize buffer_count;
@@ -23,6 +24,7 @@ typedef struct {
     .container_name = NULL, \
     .blob_name = NULL, \
     .blob_endpoint = NULL, \
+    .use_https = TRUE, \
     .buffer_size = AZURE_SINK_DEFAULT_BUFFER_SIZE, \
     .buffer_count = AZURE_SINK_DEFAULT_BUFFER_COUNT, \
 }

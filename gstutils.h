@@ -28,4 +28,8 @@ void gst_azure_sink_set_uint_property(GstAzureSink *sink, const GValue *value,
     }
 }
 
+
+// some handy functions
+#define GSTR_IS_EMPTY(_gstr) ((_gstr) == NULL || *(_gstr) == '\0')
+
 #endif

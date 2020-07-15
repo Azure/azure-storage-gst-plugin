@@ -9,7 +9,7 @@
 #include "blob/put_block_list_request.h"
 #include "blob/put_block_request.h"
 
-#include "azureuploader.hpp"
+#include "simpleazureuploader.hpp"
 
 #include "utils.h"
 
@@ -21,7 +21,7 @@ int main(int argc, char** argv) {
   bool use_https = true;
 
   // Test our azure uploader
-  gst::azure::storage::AzureUploader uploader(account_name.c_str(), account_key.c_str(), use_https);
+  gst::azure::storage::SimpleAzureUploader uploader(account_name.c_str(), account_key.c_str(), use_https);
   auto loc = uploader.init("videostore", "teststream");
   uploader.upload(loc, "asdfasdfasdf", 12);
   uploader.upload(loc, "hahaha", 6);

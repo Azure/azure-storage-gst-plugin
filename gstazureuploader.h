@@ -3,7 +3,8 @@
 
 #include <gst/gst.h>
 #include "gstazuresinkconfig.h"
-#include "azureuploader.hpp"
+#include "simpleazureuploader.hpp"
+
 G_BEGIN_DECLS
 
 typedef struct _GstAzureUploader GstAzureUploader;
@@ -26,7 +27,9 @@ static GstAzureUploaderClass *getDefaultClass();
 
 struct _GstAzureUploader {
   GstAzureUploaderClass *klass;
-  gst::azure::storage::AzureUploader *uploader;
+  // TODO maybe a more elegant solution?
+  // TODO following two should be implementation-specific
+  void *impl;
   std::shared_ptr<gst::azure::storage::AzureUploadLocation> loc;
 };
 

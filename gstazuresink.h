@@ -20,6 +20,7 @@
 #ifndef _GST_AZURE_SINK_H_
 #define _GST_AZURE_SINK_H_
 #include <gst/base/gstbasesink.h>
+#include "gstazureuploader.h"
 #include "gstazuresinkconfig.h"
 
 G_BEGIN_DECLS
@@ -37,7 +38,10 @@ struct _GstAzureSink
 {
   GstBaseSink base_azuresink;
   GstPad *sinkpad;
+  GstAzureUploader *uploader;
   GstAzureSinkConfig config;
+
+  gsize total_bytes_written;
 };
 
 struct _GstAzureSinkClass

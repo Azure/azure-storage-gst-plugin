@@ -36,7 +36,7 @@ link_libraries(
     pthread
 )
 
-file(GLOB SOURCE_FILES *.cpp *.h)
+file(GLOB SOURCE_FILES *.cpp *.h *.hpp)
 
 add_executable(azure-storage-gst-plugin-test ${SOURCE_FILES})
 

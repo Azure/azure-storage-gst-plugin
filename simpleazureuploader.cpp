@@ -3,7 +3,7 @@
 // FIXME use a specific logger
 #include <iostream>
 #include <iomanip>
-#include "azureuploader.hpp"
+#include "simpleazureuploader.hpp"
 #include "utils.h"
 
 namespace gst {
@@ -25,7 +25,7 @@ bool UploadWorker::append(UploadBuffer buffer)
   new_cond.notify_all();
 }
 
-// FIXME avoid memory copy
+// FIXME find ways to avoid memory copy
 void UploadWorker::run()
 {
   log() << "Worker is running." << std::endl;
@@ -56,6 +56,8 @@ void UploadWorker::run()
     stream.seekg(cur);
     log() << "Uploading content, length = " << static_cast<unsigned int>(end - cur) << std::endl;
     // re-commit the stream object and transfer it
+    // do not need explicit retry mechanism here, as unsent stream
+    // will be automatically recommitted here
     auto fut = this->client->append_block_from_stream(loc->first, loc->second, stream);
     fut.wait();
     auto result = fut.get();
@@ -82,19 +84,18 @@ void UploadWorker::stop()
   worker.join();
 }
 
-AzureUploader::AzureUploader(const char *account_name, const char *account_key, bool use_https)
+SimpleAzureUploader::SimpleAzureUploader(const char *account_name, const char *account_key, bool use_https)
 {
   std::string name(account_name);
   std::string key(account_key);
   auto credential = std::make_shared<::azure::storage_lite::shared_key_credential>(name, key);
   auto storage_account = std::make_shared<::azure::storage_lite::storage_account>(name, credential, use_https);
-  // TODO parameterize the number of threads.
   this->client = std::make_shared<::azure::storage_lite::blob_client>(storage_account, AZURE_CLIENT_CONCCURRENCY);
 }
 
 // create a new stream.
 std::shared_ptr<AzureUploadLocation>
-AzureUploader::init(const char *container_name, const char *blob_name)
+SimpleAzureUploader::init(const char *container_name, const char *blob_name)
 {
   auto ret = std::make_shared<AzureUploadLocation>(std::string(container_name), std::string(blob_name));
   // build a new upload worker in place
@@ -105,7 +106,7 @@ AzureUploader::init(const char *container_name, const char *blob_name)
 
 // append block of data. Push data to queue and return immediately.
 bool
-AzureUploader::upload(std::shared_ptr<AzureUploadLocation> loc, const char *data, size_t size)
+SimpleAzureUploader::upload(std::shared_ptr<AzureUploadLocation> loc, const char *data, size_t size)
 {
   if(!size) {
     return true;
@@ -121,7 +122,7 @@ AzureUploader::upload(std::shared_ptr<AzureUploadLocation> loc, const char *data
 }
 
 bool
-AzureUploader::flush(std::shared_ptr<AzureUploadLocation> loc)
+SimpleAzureUploader::flush(std::shared_ptr<AzureUploadLocation> loc)
 {
   auto worker_iter = uploads.find(loc);
   // wait for specific location to flush
@@ -135,7 +136,7 @@ AzureUploader::flush(std::shared_ptr<AzureUploadLocation> loc)
 }
 
 bool
-AzureUploader::destroy(std::shared_ptr<AzureUploadLocation> loc)
+SimpleAzureUploader::destroy(std::shared_ptr<AzureUploadLocation> loc)
 {
   // wait for specific location to flush
   auto worker_iter = uploads.find(loc);
@@ -146,6 +147,7 @@ AzureUploader::destroy(std::shared_ptr<AzureUploadLocation> loc)
   }
   worker_iter->second->flush();
   // FIXME possible race condition, new data might be injected in between
+  // possibility is scarce though
   worker_iter->second->stop();
   uploads.erase(worker_iter);
   return true;
