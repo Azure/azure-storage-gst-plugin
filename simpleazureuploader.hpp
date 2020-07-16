@@ -22,9 +22,9 @@ typedef std::pair<std::string, std::string> AzureUploadLocation;
 typedef std::pair<const char *, size_t> UploadBuffer;
 class UploadWorker {
   std::shared_ptr<AzureUploadLocation> loc;
-  std::mutex new_lock, finish_lock;
+  std::mutex stream_lock, finish_lock;
   std::condition_variable new_cond, finish_cond;
-  std::stringstream stream;
+  std::unique_ptr<std::stringstream> stream;
   bool finished;
   bool stopped;
   std::shared_ptr<::azure::storage_lite::blob_client> client;
@@ -32,7 +32,8 @@ class UploadWorker {
 public:
   UploadWorker(std::shared_ptr<AzureUploadLocation> loc,
     std::shared_ptr<::azure::storage_lite::blob_client> client):
-    loc(loc), client(client), worker([this] { this->run(); }) {}
+    loc(loc), stream(std::move(std::make_unique<std::stringstream>())), stopped(false), finished(true),
+    client(client), worker([this] { this->run(); }) {}
   bool append(UploadBuffer buffer);
   void run();
   void flush();

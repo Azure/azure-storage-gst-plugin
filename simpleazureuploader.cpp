@@ -15,16 +15,18 @@ namespace storage {
 
 std::ostream &UploadWorker::log()
 {
-  return std::cerr << '[' << std::hex << worker.get_id() << ']' << std::dec;
+  return std::cerr << '[' << std::hex << std::this_thread::get_id() << ']' << std::dec;
 }
 
 // individual uploader logics
 bool UploadWorker::append(UploadBuffer buffer)
 {
+  const std::lock_guard<std::mutex> lock(stream_lock);
   log() << "Appending, length = " << buffer.second << std::endl;
-  const std::lock_guard<std::mutex> lock(new_lock);
-  stream.write(buffer.first, buffer.second);
+  stream->write(buffer.first, buffer.second);
+  finish_lock.lock();
   finished = false;
+  finish_lock.unlock();
   new_cond.notify_all();
   return true;
 }
@@ -40,7 +42,7 @@ void UploadWorker::run()
   
   while(!stopped)
   {
-    if(stream.rdbuf()->in_avail() == 0)
+    if(stream->rdbuf()->in_avail() == 0)
     {
       // notify all that stream is flushed
       finish_lock.lock();
@@ -48,22 +50,28 @@ void UploadWorker::run()
       finish_lock.unlock();
       finish_cond.notify_all();
       // wait for new content while not stopped
-      std::unique_lock<std::mutex> lk(new_lock);
+      std::unique_lock<std::mutex> lk(stream_lock);
       new_cond.wait(lk);
       if(stopped) break;
       lk.unlock();
     }
+    stream_lock.lock();
+    auto saved_stream = std::move(stream);
+    stream = std::make_unique<std::stringstream>();
+    stream_lock.unlock();
+
     // get content length for debugging
-    auto cur = stream.tellg();
-    stream.seekg(0, std::ios_base::end);
-    auto end = stream.tellg();
-    stream.seekg(cur);
+    auto cur = saved_stream->tellg();
+    saved_stream->seekg(0, std::ios_base::end);
+    auto end = saved_stream->tellg();
+    saved_stream->seekg(cur);
+
     log() << "Uploading content, length = " << static_cast<unsigned int>(end - cur) << std::endl;
     // re-commit the stream object and transfer it
     // do not need explicit retry mechanism here, as unsent stream
     // will be automatically recommitted here
-    auto fut = this->client->append_block_from_stream(loc->first, loc->second, stream);
-    fut.wait();
+    
+    auto fut = this->client->append_block_from_stream(loc->first, loc->second, *saved_stream);
     auto result = fut.get();
     handle(result, log());
   }

@@ -24,7 +24,7 @@ void gst_azure_sink_set_uint64_property(GstAzureSink *sink, const GValue *value,
 {
     if(value != NULL) {
         *property = g_value_get_uint(value);
-        GST_INFO_OBJECT(sink, "Setting property %s: %u", property_name, *property);
+        GST_INFO_OBJECT(sink, "Setting property %s: %llu", property_name, *property);
     } else {
         GST_WARNING_OBJECT(sink, "Attempted to set property %s to invalid value, skipped.", property_name);
     }

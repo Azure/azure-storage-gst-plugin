@@ -113,6 +113,7 @@ gst_azure_sink_class_init (GstAzureSinkClass * klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
   GstBaseSinkClass *base_sink_class = GST_BASE_SINK_CLASS (klass);
+  GST_INFO("azuresink doing configuration");
 
   gst_element_class_add_static_pad_template (GST_ELEMENT_CLASS(klass),
       &gst_azure_sink_sink_template);
@@ -123,6 +124,7 @@ gst_azure_sink_class_init (GstAzureSinkClass * klass)
       "Write stream into azure blob storage.",
       "Eugene Chen-yijunc@microsoft.com");
 
+  GST_INFO("azuresink set metadata");
   gobject_class->set_property = gst_azure_sink_set_property;
   gobject_class->get_property = gst_azure_sink_get_property;
   // gobject_class->dispose = gst_azure_sink_dispose;
@@ -179,9 +181,11 @@ gst_azure_sink_init (GstAzureSink *azuresink)
   azuresink->config = AZURE_SINK_DEFAULT_CONFIG;
   azuresink->uploader = NULL;
   azuresink->total_bytes_written = 0;
-  azuresink->sinkpad = gst_pad_new_from_static_template(&gst_azure_sink_sink_template, "sink");
+  GST_DEBUG_OBJECT(azuresink, "init");
+  GST_INFO("setting gst base sink...\n");
+  // azuresink->sinkpad = gst_pad_new_from_static_template(&gst_azure_sink_sink_template, "sink");
   /* NOTE pads are configured here with gst_pad_set_*_function () */
-  gst_element_add_pad(GST_ELEMENT(azuresink), azuresink->sinkpad);
+  // gst_element_add_pad(GST_ELEMENT(azuresink), azuresink->sinkpad);
   gst_base_sink_set_sync(GST_BASE_SINK(azuresink), FALSE);
 }
 
@@ -468,9 +472,10 @@ gst_azure_sink_unlock_stop (GstBaseSink * sink)
 static gboolean
 gst_azure_sink_query (GstBaseSink * sink, GstQuery * query)
 {
+  GST_INFO("Entering query");
   gboolean ret = FALSE;
   GstAzureSink *azuresink = GST_AZURE_SINK (sink);
-
+  GST_INFO("Got azure sink");
   GST_DEBUG_OBJECT (azuresink, "query");
 
   switch(GST_QUERY_TYPE(query)) {
@@ -503,7 +508,8 @@ gst_azure_sink_query (GstBaseSink * sink, GstQuery * query)
       break;
     }
     default:
-      ret = GST_BASE_SINK_CLASS(azuresink)->query(sink, query);
+    GST_INFO("default!");
+      ret = GST_BASE_SINK_CLASS(gst_azure_sink_parent_class)->query(sink, query);
       break;
   }
 
@@ -535,7 +541,7 @@ gst_azure_sink_event (GstBaseSink * sink, GstEvent * event)
       break;
   }
 
-  return GST_BASE_SINK_CLASS(azuresink)->event(sink, event);
+  return GST_BASE_SINK_CLASS(gst_azure_sink_parent_class)->event(sink, event);
 }
 
 // we do not need this since we do not have multiple sinks

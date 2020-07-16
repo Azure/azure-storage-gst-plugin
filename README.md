@@ -55,4 +55,8 @@ Factory Details:
 
 ## Using the plugin
 
-TODO :)
+To test it with random snow output:
+
+```bash
+GST_PLUGIN_PATH=. gst-launch-1.0 -v -e videotestsrc pattern=snow ! x264enc ! matroskamux ! azuresink account-name="your account name" account-key="your account key" container-name="your container name" blob-name="output blob name"
+```

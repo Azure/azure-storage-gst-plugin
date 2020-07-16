@@ -6,9 +6,6 @@
 
 G_BEGIN_DECLS
 
-// NOTE we need an extra layer if multiple implementations of GstAzureUploader is needed.
-// wrapppers for uploader functions
-
 gboolean gst_azure_uploader_destroy(GstAzureUploader *uploader)
 {
   return uploader->klass->destroy(uploader);

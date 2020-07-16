@@ -37,7 +37,7 @@ typedef struct _GstAzureSinkClass GstAzureSinkClass;
 struct _GstAzureSink
 {
   GstBaseSink base_azuresink;
-  GstPad *sinkpad;
+  // GstPad *sinkpad;
   GstAzureUploader *uploader;
   GstAzureSinkConfig config;
 
