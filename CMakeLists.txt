@@ -42,9 +42,9 @@ link_libraries(
 # specify compile targets
 file(GLOB SOURCE_FILES *.c *.cpp *.h *.hpp)
 list(REMOVE_ITEM SOURCE_FILES main.cpp)
-add_library(gstazurestorageplugin SHARED ${SOURCE_FILES})
+add_library(gstazureelements SHARED ${SOURCE_FILES})
 add_executable(azure-storage-gst-plugin-test main.cpp)
-target_link_libraries(azure-storage-gst-plugin-test gstazurestorageplugin)
+target_link_libraries(azure-storage-gst-plugin-test gstazureelements)
 
 add_compile_options(-Wall)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fpic")
