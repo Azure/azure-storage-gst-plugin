@@ -3,12 +3,7 @@
 #include <chrono>
 #include <thread>
 
-#include "storage_credential.h"
-#include "storage_account.h"
-#include "blob/blob_client.h"
-#include "blob/put_block_list_request.h"
-#include "blob/put_block_request.h"
-
+#include "simpleazureuploader.h"
 #include "simpleazureuploader.hpp"
 
 #include "utils.h"

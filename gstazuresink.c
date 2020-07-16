@@ -39,9 +39,9 @@
 #include <gst/gst.h>
 #include <gst/base/gstbasesink.h>
 
-#include "gsterror.h"
 #include "gstazureuploader.h"
 #include "gstazuresinkconfig.h"
+#include "gsterror.h"
 #include "gstutils.h"
 
 GST_DEBUG_CATEGORY_STATIC (gst_azure_sink_debug_category);
@@ -54,12 +54,12 @@ static void gst_azure_sink_set_property (GObject * object,
     guint property_id, const GValue * value, GParamSpec * pspec);
 static void gst_azure_sink_get_property (GObject * object,
     guint property_id, GValue * value, GParamSpec * pspec);
-static void gst_azure_sink_dispose (GObject * object);
-static void gst_azure_sink_finalize (GObject * object);
+// static void gst_azure_sink_dispose (GObject * object);
+// static void gst_azure_sink_finalize (GObject * object);
 
 // static GstCaps *gst_azure_sink_get_caps (GstBaseSink * sink, GstCaps * filter);
 // static gboolean gst_azure_sink_set_caps (GstBaseSink * sink, GstCaps * caps);
-static GstCaps *gst_azure_sink_fixate (GstBaseSink * sink, GstCaps * caps);
+// static GstCaps *gst_azure_sink_fixate (GstBaseSink * sink, GstCaps * caps);
 // static gboolean gst_azure_sink_activate_pull (GstBaseSink * sink, gboolean active);
 // static void gst_azure_sink_get_times (GstBaseSink * sink, GstBuffer * buffer,
 //     GstClockTime * start, GstClockTime * end);
@@ -128,11 +128,11 @@ gst_azure_sink_class_init (GstAzureSinkClass * klass)
 
   gobject_class->set_property = gst_azure_sink_set_property;
   gobject_class->get_property = gst_azure_sink_get_property;
-  gobject_class->dispose = gst_azure_sink_dispose;
-  gobject_class->finalize = gst_azure_sink_finalize;
+  // gobject_class->dispose = gst_azure_sink_dispose;
+  // gobject_class->finalize = gst_azure_sink_finalize;
   // base_sink_class->get_caps = GST_DEBUG_FUNCPTR (gst_azure_sink_get_caps);
   // base_sink_class->set_caps = GST_DEBUG_FUNCPTR (gst_azure_sink_set_caps);
-  base_sink_class->fixate = GST_DEBUG_FUNCPTR (gst_azure_sink_fixate);
+  // base_sink_class->fixate = GST_DEBUG_FUNCPTR (gst_azure_sink_fixate);
   // base_sink_class->activate_pull = GST_DEBUG_FUNCPTR (gst_azure_sink_activate_pull);
   // base_sink_class->get_times = GST_DEBUG_FUNCPTR (gst_azure_sink_get_times);
   // base_sink_class->propose_allocation = GST_DEBUG_FUNCPTR (gst_azure_sink_propose_allocation);
@@ -152,28 +152,28 @@ gst_azure_sink_class_init (GstAzureSinkClass * klass)
   g_object_class_install_property (gobject_class, PROP_ACCOUNT_NAME,
     g_param_spec_string ("account-name", "azure account name",
       "Your azure storage account.", NULL,
-      G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+      (GParamFlags)(G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS)));
 
   g_object_class_install_property (gobject_class, PROP_ACCOUNT_KEY,
     g_param_spec_string ("account-key", "azure account key",
       "Your azure storage account key.", NULL,
-      G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+      (GParamFlags)(G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS)));
 
   g_object_class_install_property (gobject_class, PROP_CONTAINER_NAME,
     g_param_spec_string ("container-name", "azure blob storage container name",
       "The azure blob storage container to store the blob file.", NULL,
-      G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+      (GParamFlags)(G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS)));
         
   g_object_class_install_property (gobject_class, PROP_BLOB_NAME,
     g_param_spec_string ("blob-name", "azure blob storage blob name",
       "The file name you want to write into.", NULL,
-      G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+      (GParamFlags)(G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS)));
 
   g_object_class_install_property (gobject_class, PROP_BLOB_ENDPOINT,
     g_param_spec_string ("blob-endpoint", "azure blob storage endpoint",
       "Azure blob storage service endpoint. Set it to your blob service's url "
       "if you're using an emulator, leave it blank otherwise.", NULL,
-      G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+      (GParamFlags)(G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS)));
 }
 
 static void
@@ -218,11 +218,11 @@ gst_azure_sink_set_property (GObject * object, guint property_id,
         &azuresink->config.blob_name, "blob-name");
       break;
     case PROP_BUFFER_COUNT:
-      gst_azure_sink_set_uint_property(azuresink, value,
+      gst_azure_sink_set_uint64_property(azuresink, value,
         &azuresink->config.buffer_count, "buffer-count");
       break;
     case PROP_BUFFER_SIZE:
-      gst_azure_sink_set_uint_property(azuresink, value,
+      gst_azure_sink_set_uint64_property(azuresink, value,
         &azuresink->config.buffer_size, "buffer-size");
       break;
     default:
@@ -257,10 +257,10 @@ gst_azure_sink_get_property (GObject * object, guint property_id,
       g_value_set_string(value, azuresink->config.blob_name);
       break;
     case PROP_BUFFER_COUNT:
-      g_value_set_string(value, azuresink->config.buffer_count);
+      g_value_set_uint64(value, azuresink->config.buffer_count);
       break;
     case PROP_BUFFER_SIZE:
-      g_value_set_string(value, azuresink->config.buffer_size);
+      g_value_set_uint64(value, azuresink->config.buffer_size);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -268,6 +268,7 @@ gst_azure_sink_get_property (GObject * object, guint property_id,
   }
 }
 
+// NOTE not included
 void
 gst_azure_sink_dispose (GObject * object)
 {
@@ -278,11 +279,11 @@ gst_azure_sink_dispose (GObject * object)
   /* clean up as possible.  may be called multiple times */
   // release config
   gst_azure_sink_release_config(&azuresink->config);
-  gst_azure_uploader_destroy(azuresink->uploader);
   G_OBJECT_CLASS (gst_azure_sink_parent_class)->dispose (object);
 }
 
-// FIXME called when gst plugin is destroyed
+// NOTE not included
+// NOTE called when plguin is destroyed
 // maybe not necessary?
 void
 gst_azure_sink_finalize (GObject * object)
@@ -319,7 +320,7 @@ gst_azure_sink_set_caps (GstBaseSink * sink, GstCaps * caps)
   return TRUE;
 }
 
-// FIXME implement this
+// NOTE not included
 /* fixate sink caps during pull-mode negotiation */
 static GstCaps *
 gst_azure_sink_fixate (GstBaseSink * sink, GstCaps * caps)
@@ -376,14 +377,14 @@ gst_azure_sink_start (GstBaseSink * sink)
   GST_DEBUG_OBJECT (azuresink, "start");
   
   // examine configuration
-  if(azuresink->config == NULL)
-  {
-    GST_ELEMENT_ERROR(sink, RESOURCE, NO_CONFIG,
-      ("Missing configuration."), (NULL));
-    return FALSE;
-  }
+  // if(azuresink->config == NULL)
+  // {
+  //   GST_ELEMENT_ERROR(sink, RESOURCE, NO_CONFIG,
+  //     ("Missing configuration."), (NULL));
+  //   return FALSE;
+  // }
   if(GSTR_IS_EMPTY(azuresink->config.account_key) ||
-  GSTR_IS_EMPTY(azuresink->config.account_name)
+  GSTR_IS_EMPTY(azuresink->config.account_name))
   {
     GST_ELEMENT_ERROR(sink, RESOURCE, NO_CREDENTIAL,
       ("Missing account name or account key."), (NULL));
@@ -399,7 +400,7 @@ gst_azure_sink_start (GstBaseSink * sink)
 
   if(azuresink->uploader == NULL)
   {
-    azuresink->uploader = gst_azure_sink_uploader_new(&azurersink->config);
+    azuresink->uploader = gst_azure_sink_uploader_new(&azuresink->config);
   }
 
   gboolean init_success = gst_azure_uploader_init(azuresink->uploader, azuresink->config.container_name, azuresink->config.blob_name);
@@ -424,7 +425,7 @@ gst_azure_sink_stop (GstBaseSink * sink)
 
   GST_DEBUG_OBJECT (azuresink, "stop");
 
-  gboolean flush_sucess = gst_azure_uploader_flush(azuresink->uploader);
+  gboolean flush_success = gst_azure_uploader_flush(azuresink->uploader);
   if(!flush_success)
   {
     GST_ELEMENT_ERROR(sink, RESOURCE, FLUSH_FAILED,
@@ -432,7 +433,7 @@ gst_azure_sink_stop (GstBaseSink * sink)
     return FALSE;
   }
   gboolean destroy_success = gst_azure_uploader_destroy(azuresink->uploader);
-  if(!flush_success)
+  if(!destroy_success)
   {
     GST_ELEMENT_ERROR(sink, RESOURCE, DESTROY_FAILED,
     ("Failed to destroy uploader entry."), (NULL));
@@ -500,7 +501,7 @@ gst_azure_sink_query (GstBaseSink * sink, GstQuery * query)
       // this sink is not seekable
       GstFormat format;
       gst_query_parse_seeking(query, &format, NULL, NULL, NULL);
-      gst_query_set_seeking(query, &format, FALSE, 0, -1);
+      gst_query_set_seeking(query, format, FALSE, 0, -1);
       ret = TRUE;
       break;
     }
@@ -525,7 +526,7 @@ gst_azure_sink_event (GstBaseSink * sink, GstEvent * event)
   switch(type) {
     case GST_EVENT_EOS:
     {
-      gboolean flush_sucess = gst_azure_uploader_flush(azuresink->uploader);
+      gboolean flush_success = gst_azure_uploader_flush(azuresink->uploader);
       if(!flush_success)
       {
         GST_ELEMENT_ERROR(sink, RESOURCE, FLUSH_FAILED,
@@ -597,7 +598,7 @@ gst_azure_sink_read_buffer(GstAzureSink *sink, GstBuffer *buffer)
   }
 
   // copy all of them to sstream
-  if(!gst_azure_uploader_upload(sink->uploader, map_info.data, map_info.size))
+  if(!gst_azure_uploader_upload(sink->uploader, (const gchar *)map_info.data, map_info.size))
   {
     GST_ELEMENT_ERROR(sink, RESOURCE, APPEND_FAILED,
       ("Failed to append to uploader's buffer."), (NULL));
@@ -616,7 +617,7 @@ gst_azure_sink_render (GstBaseSink * sink, GstBuffer * buffer)
 
   GST_DEBUG_OBJECT (azuresink, "render");
 
-  guint8 n_mem = gst_buffer_n_memory(buffer);
+  n_mem = gst_buffer_n_memory(buffer);
 
   if(n_mem > 0) {
     if(gst_azure_sink_read_buffer(azuresink, buffer))
@@ -671,4 +672,5 @@ GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
     azuresink,
     "Azure storage elements",
-    plugin_init, VERSION, "LGPL", PACKAGE_NAME, GST_PACKAGE_ORIGIN)
+    plugin_init,
+    VERSION, "LGPL", PACKAGE_NAME, GST_PACKAGE_ORIGIN)

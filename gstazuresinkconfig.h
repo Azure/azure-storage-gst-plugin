@@ -2,6 +2,7 @@
 #define AZURE_SINK_CONFIG_H_
 
 #include <gst/gst.h>
+G_BEGIN_DECLS
 
 #define AZURE_SINK_DEFAULT_BUFFER_SIZE (5*1024*1024)
 #define AZURE_SINK_DEFAULT_BUFFER_COUNT 4
@@ -38,5 +39,7 @@ void gst_azure_sink_release_config(GstAzureSinkConfig *config) {
     
     *config = AZURE_SINK_DEFAULT_CONFIG;
 }
+
+G_END_DECLS
 
 #endif

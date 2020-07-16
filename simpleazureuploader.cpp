@@ -1,14 +1,17 @@
 // async azure uploader using azure-storage-cpplite
+#include "simpleazureuploader.h"
+#include "simpleazureuploader.hpp"
 
-// FIXME use a specific logger
+#include <gst/gst.h>
 #include <iostream>
 #include <iomanip>
-#include "simpleazureuploader.hpp"
-#include "utils.h"
+
+// FIXME use a specific logger
 
 namespace gst {
 namespace azure {
 namespace storage {
+
 
 std::ostream &UploadWorker::log()
 {
@@ -23,6 +26,7 @@ bool UploadWorker::append(UploadBuffer buffer)
   stream.write(buffer.first, buffer.second);
   finished = false;
   new_cond.notify_all();
+  return true;
 }
 
 // FIXME find ways to avoid memory copy
@@ -156,3 +160,75 @@ SimpleAzureUploader::destroy(std::shared_ptr<AzureUploadLocation> loc)
 }
 }
 }
+
+static inline gst::azure::storage::SimpleAzureUploader *simple_uploader(GstAzureUploader *uploader)
+{
+  return static_cast<gst::azure::storage::SimpleAzureUploader *>(uploader->impl);
+}
+
+static inline std::shared_ptr<gst::azure::storage::AzureUploadLocation> &location(GstAzureUploader *uploader)
+{
+  return *(static_cast<std::shared_ptr<gst::azure::storage::AzureUploadLocation> *>(uploader->data));
+}
+
+// c interfaces
+G_BEGIN_DECLS
+
+gboolean gst_simple_azure_uploader_init(GstAzureUploader *uploader, const gchar *container_name, const gchar *blob_name);
+gboolean gst_simple_azure_uploader_flush(GstAzureUploader *uploader);
+gboolean gst_simple_azure_uploader_destroy(GstAzureUploader *uploader);
+gboolean gst_simple_azure_uploader_upload(GstAzureUploader *uploader, const gchar *data, const gsize size);
+
+GstAzureUploaderClass *getSimpleUploaderClass()
+{
+  GstAzureUploaderClass *ret = new GstAzureUploaderClass();
+  ret->init = gst_simple_azure_uploader_init;
+  ret->flush = gst_simple_azure_uploader_flush;
+  ret->destroy = gst_simple_azure_uploader_destroy;
+  ret->upload = gst_simple_azure_uploader_upload;
+  return ret;
+}
+
+
+GstAzureUploader *gst_azure_sink_uploader_new(const GstAzureSinkConfig *config) {
+  static GstAzureUploaderClass *defaultClass = getSimpleUploaderClass();
+  if(config == NULL)
+    return NULL;
+  GstAzureUploader *uploader = new GstAzureUploader();
+  if(uploader == NULL)
+    return NULL;
+  uploader->klass = defaultClass;
+  uploader->impl = (void *)(new gst::azure::storage::SimpleAzureUploader(
+    config->account_name, config->account_key, (bool)config->use_https));
+  uploader->data = (void *)(new std::shared_ptr<gst::azure::storage::AzureUploadLocation>(nullptr));
+  return uploader;
+}
+
+gboolean gst_simple_azure_uploader_init(GstAzureUploader *uploader, const gchar *container_name, const gchar *blob_name)
+{
+  location(uploader) = simple_uploader(uploader)->init(container_name, blob_name);
+  return TRUE;
+}
+
+gboolean gst_simple_azure_uploader_flush(GstAzureUploader *uploader)
+{
+  if(location(uploader) == nullptr)
+    return FALSE;
+  return simple_uploader(uploader)->flush(location(uploader));
+}
+
+gboolean gst_simple_azure_uploader_destroy(GstAzureUploader *uploader)
+{
+  if(location(uploader) == nullptr)
+    return FALSE;
+  return simple_uploader(uploader)->destroy(location(uploader));
+}
+
+gboolean gst_simple_azure_uploader_upload(GstAzureUploader *uploader, const gchar *data, const gsize size)
+{
+  if(location(uploader) == nullptr)
+    return FALSE;
+  return simple_uploader(uploader)->upload(location(uploader), (const char *)data, (size_t)size);
+}
+
+G_END_DECLS

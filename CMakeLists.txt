@@ -4,6 +4,10 @@ project(azure-storage-gst-plugin VERSION 0.1.0)
 include(CTest)
 enable_testing()
 
+# set toolchain
+set(CMAKE_C_COMPILER "gcc")
+set(CMAKE_CXX_COMPILER "g++")
+
 # set C++14 standard
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
@@ -36,9 +40,14 @@ link_libraries(
     pthread
 )
 
-file(GLOB SOURCE_FILES *.cpp *.h *.hpp)
+file(GLOB SOURCE_FILES *.c *.cpp *.h *.hpp)
 
-add_executable(azure-storage-gst-plugin-test ${SOURCE_FILES})
+add_compile_options(-Wall)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpic")
+
+add_library(gstazurestorageplugin SHARED ${SOURCE_FILES})
+add_executable(azure-storage-gst-plugin-test main.cpp)
+target_link_libraries(azure-storage-gst-plugin-test gstazurestorageplugin)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})

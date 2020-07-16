@@ -3,7 +3,6 @@
 
 #include <iostream>
 #include <storage_outcome.h>
-#include <gst/gst.h>
 
 using namespace azure::storage_lite;
 

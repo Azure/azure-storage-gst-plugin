@@ -1,5 +1,5 @@
-#ifndef AZURE_SINK_SIMPLE_UPLOADER_H
-#define AZURE_SINK_SIMPLE_UPLOADER_H
+#ifndef _SIMPLE_AZURE_UPLOADER_CPP_H_
+#define _SIMPLE_AZURE_UPLOADER_CPP_H_
 
 #include <map>
 #include <utility>
@@ -7,6 +7,7 @@
 #include <thread>
 #include <mutex>
 #include <condition_variable>
+#include "utils.h"
 
 #include "storage_credential.h"
 #include "storage_account.h"
@@ -21,13 +22,13 @@ typedef std::pair<std::string, std::string> AzureUploadLocation;
 typedef std::pair<const char *, size_t> UploadBuffer;
 class UploadWorker {
   std::shared_ptr<AzureUploadLocation> loc;
-  std::thread worker;
   std::mutex new_lock, finish_lock;
   std::condition_variable new_cond, finish_cond;
   std::stringstream stream;
   bool finished;
   bool stopped;
   std::shared_ptr<::azure::storage_lite::blob_client> client;
+  std::thread worker;
 public:
   UploadWorker(std::shared_ptr<AzureUploadLocation> loc,
     std::shared_ptr<::azure::storage_lite::blob_client> client):
@@ -53,7 +54,9 @@ public:
   bool flush(std::shared_ptr<AzureUploadLocation> loc);
   bool destroy(std::shared_ptr<AzureUploadLocation> loc);
 };
+
 }
 }
 }
+
 #endif

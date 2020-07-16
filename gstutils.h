@@ -3,6 +3,8 @@
 
 #include "gstazuresink.h"
 
+G_BEGIN_DECLS
+
 void gst_azure_sink_set_string_property(GstAzureSink *sink, const GValue *value,
     gchar **property, const gchar *property_name)
 {
@@ -17,8 +19,8 @@ void gst_azure_sink_set_string_property(GstAzureSink *sink, const GValue *value,
     }
 }
 
-void gst_azure_sink_set_uint_property(GstAzureSink *sink, const GValue *value,
-    guint *property, const gchar *property_name)
+void gst_azure_sink_set_uint64_property(GstAzureSink *sink, const GValue *value,
+    guint64 *property, const gchar *property_name)
 {
     if(value != NULL) {
         *property = g_value_get_uint(value);
@@ -32,4 +34,5 @@ void gst_azure_sink_set_uint_property(GstAzureSink *sink, const GValue *value,
 // some handy functions
 #define GSTR_IS_EMPTY(_gstr) ((_gstr) == NULL || *(_gstr) == '\0')
 
+G_END_DECLS
 #endif
