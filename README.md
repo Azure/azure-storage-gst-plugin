@@ -42,8 +42,6 @@ Plugin Details:
   1 features:
   +-- 1 elements
 $ GST_PLUGIN_PATH=. gst-inspect-1.0 azuresink
-
-(gst-inspect-1.0:22844): GStreamer-CRITICAL **: 05:48:42.070: Padname sink is not unique in element (null), not adding
 Factory Details:
   Rank                     none (0)
   Long-name                Azure storage sink
@@ -58,5 +56,9 @@ Factory Details:
 To test it with random snow output:
 
 ```bash
-GST_PLUGIN_PATH=. gst-launch-1.0 -v -e videotestsrc pattern=snow ! x264enc ! matroskamux ! azuresink account-name="your account name" account-key="your account key" container-name="your container name" blob-name="output blob name"
+cd build  # goto the library's location
+# the following four parameters are mandatory
+GST_PLUGIN_PATH=. gst-launch-1.0 -v -e videotestsrc pattern=snow ! x264enc ! matroskamux ! \
+  azuresink account-name="your account name" account-key="your account key" \
+    container-name="your container name" blob-name="output blob name"
 ```
