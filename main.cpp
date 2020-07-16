@@ -3,7 +3,6 @@
 #include <chrono>
 #include <thread>
 
-#include "simpleazureuploader.h"
 #include "simpleazureuploader.hpp"
 
 #include "utils.h"

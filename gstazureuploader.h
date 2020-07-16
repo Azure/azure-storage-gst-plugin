@@ -1,9 +1,8 @@
-#ifndef _GST_AZURE_UPLOADER_H
-#define _GST_AZURE_UPLOADER_H
+#ifndef _AZURE_SINK_GST_AZURE_UPLOADER_H
+#define _AZURE_SINK_GST_AZURE_UPLOADER_H
 
 #include <gst/gst.h>
 #include "gstazuresinkconfig.h"
-#include "simpleazureuploader.h"
 
 G_BEGIN_DECLS
 

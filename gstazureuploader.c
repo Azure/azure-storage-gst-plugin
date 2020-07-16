@@ -6,8 +6,6 @@
 
 G_BEGIN_DECLS
 
-#define GET_CLASS(obj) (((GstAzureUploader *)(obj))->klass)
-
 // NOTE we need an extra layer if multiple implementations of GstAzureUploader is needed.
 // wrapppers for uploader functions
 

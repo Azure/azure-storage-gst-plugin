@@ -30,18 +30,15 @@
  * </refsect2>
  */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
+// #ifdef HAVE_CONFIG_H
+// #include "config.h"
+// #endif
 #include "gstazuresink.h"
 
 #include <gst/gst.h>
 #include <gst/base/gstbasesink.h>
 
-#include "gstazureuploader.h"
-#include "gstazuresinkconfig.h"
-#include "gsterror.h"
+#include "simpleazureuploader.h"
 #include "gstutils.h"
 
 GST_DEBUG_CATEGORY_STATIC (gst_azure_sink_debug_category);
@@ -152,28 +149,28 @@ gst_azure_sink_class_init (GstAzureSinkClass * klass)
   g_object_class_install_property (gobject_class, PROP_ACCOUNT_NAME,
     g_param_spec_string ("account-name", "azure account name",
       "Your azure storage account.", NULL,
-      (GParamFlags)(G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS)));
+      (G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS)));
 
   g_object_class_install_property (gobject_class, PROP_ACCOUNT_KEY,
     g_param_spec_string ("account-key", "azure account key",
       "Your azure storage account key.", NULL,
-      (GParamFlags)(G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS)));
+      (G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS)));
 
   g_object_class_install_property (gobject_class, PROP_CONTAINER_NAME,
     g_param_spec_string ("container-name", "azure blob storage container name",
       "The azure blob storage container to store the blob file.", NULL,
-      (GParamFlags)(G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS)));
+      (G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS)));
         
   g_object_class_install_property (gobject_class, PROP_BLOB_NAME,
     g_param_spec_string ("blob-name", "azure blob storage blob name",
       "The file name you want to write into.", NULL,
-      (GParamFlags)(G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS)));
+      (G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS)));
 
   g_object_class_install_property (gobject_class, PROP_BLOB_ENDPOINT,
     g_param_spec_string ("blob-endpoint", "azure blob storage endpoint",
       "Azure blob storage service endpoint. Set it to your blob service's url "
       "if you're using an emulator, leave it blank otherwise.", NULL,
-      (GParamFlags)(G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS)));
+      (G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS)));
 }
 
 static void
@@ -386,14 +383,14 @@ gst_azure_sink_start (GstBaseSink * sink)
   if(GSTR_IS_EMPTY(azuresink->config.account_key) ||
   GSTR_IS_EMPTY(azuresink->config.account_name))
   {
-    GST_ELEMENT_ERROR(sink, RESOURCE, NO_CREDENTIAL,
+    GST_ELEMENT_ERROR(sink, RESOURCE, NOT_AUTHORIZED,
       ("Missing account name or account key."), (NULL));
     return FALSE;
   }
   if(GSTR_IS_EMPTY(azuresink->config.container_name) ||
     GSTR_IS_EMPTY(azuresink->config.blob_name))
   {
-    GST_ELEMENT_ERROR(sink, RESOURCE, NO_DESTINATION,
+    GST_ELEMENT_ERROR(sink, RESOURCE, NOT_FOUND,
       ("Missing contianer name or blob name, cannot determine destination."), (NULL));
     return FALSE;
   }
@@ -406,7 +403,7 @@ gst_azure_sink_start (GstBaseSink * sink)
   gboolean init_success = gst_azure_uploader_init(azuresink->uploader, azuresink->config.container_name, azuresink->config.blob_name);
   if(!init_success)
   {
-    GST_ELEMENT_ERROR(sink, RESOURCE, START_FAILED,
+    GST_ELEMENT_ERROR(sink, RESOURCE, OPEN_WRITE,
       ("Failed to initialize uploader."), (NULL));
     return FALSE;
   }
@@ -428,14 +425,14 @@ gst_azure_sink_stop (GstBaseSink * sink)
   gboolean flush_success = gst_azure_uploader_flush(azuresink->uploader);
   if(!flush_success)
   {
-    GST_ELEMENT_ERROR(sink, RESOURCE, FLUSH_FAILED,
+    GST_ELEMENT_ERROR(sink, RESOURCE, SYNC,
     ("Failed to flush content before stopping the stream."), (NULL));
     return FALSE;
   }
   gboolean destroy_success = gst_azure_uploader_destroy(azuresink->uploader);
   if(!destroy_success)
   {
-    GST_ELEMENT_ERROR(sink, RESOURCE, DESTROY_FAILED,
+    GST_ELEMENT_ERROR(sink, RESOURCE, CLOSE,
     ("Failed to destroy uploader entry."), (NULL));
     return FALSE;
   }
@@ -510,7 +507,7 @@ gst_azure_sink_query (GstBaseSink * sink, GstQuery * query)
       break;
   }
 
-  return TRUE;
+  return ret;
 }
 
 /* notify subclass of event */
@@ -529,7 +526,7 @@ gst_azure_sink_event (GstBaseSink * sink, GstEvent * event)
       gboolean flush_success = gst_azure_uploader_flush(azuresink->uploader);
       if(!flush_success)
       {
-        GST_ELEMENT_ERROR(sink, RESOURCE, FLUSH_FAILED,
+        GST_ELEMENT_ERROR(sink, RESOURCE, SYNC,
         ("Failed to flush content before stopping the stream."), (NULL));
         return FALSE;
       }
@@ -592,7 +589,7 @@ gst_azure_sink_read_buffer(GstAzureSink *sink, GstBuffer *buffer)
   
   if(!gst_buffer_map(buffer, &map_info, GST_MAP_READ))
   {
-    GST_ELEMENT_ERROR (sink, RESOURCE, APPEND_FAILED,
+    GST_ELEMENT_ERROR (sink, RESOURCE, WRITE,
         ("Failed to map the buffer."), (NULL));
     return FALSE;
   }
@@ -600,7 +597,7 @@ gst_azure_sink_read_buffer(GstAzureSink *sink, GstBuffer *buffer)
   // copy all of them to sstream
   if(!gst_azure_uploader_upload(sink->uploader, (const gchar *)map_info.data, map_info.size))
   {
-    GST_ELEMENT_ERROR(sink, RESOURCE, APPEND_FAILED,
+    GST_ELEMENT_ERROR(sink, RESOURCE, WRITE,
       ("Failed to append to uploader's buffer."), (NULL));
     return FALSE;
   }
@@ -670,7 +667,7 @@ plugin_init (GstPlugin * plugin)
 
 GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
-    azuresink,
-    "Azure storage elements",
+    azureelements,
+    "Azure Storage Elements",
     plugin_init,
     VERSION, "LGPL", PACKAGE_NAME, GST_PACKAGE_ORIGIN)

@@ -20,6 +20,6 @@ cmake ..
 make # and then run...
 ```
 
-# Using the plugin
+## Using the plugin
 
 TODO :)

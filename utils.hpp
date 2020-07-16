@@ -1,5 +1,5 @@
-#ifndef _GST_AZURE_SINK_CPP_UTILS_H_
-#define _GST_AZURE_SINK_CPP_UTILS_H_
+#ifndef _AZURE_SINK_UTILS_HPP_
+#define _AZURE_SINK_UTILS_HPP_
 
 #include <iostream>
 #include <storage_outcome.h>

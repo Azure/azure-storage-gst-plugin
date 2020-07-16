@@ -1,5 +1,5 @@
-#ifndef _SIMPLE_AZURE_UPLOADER_CPP_H_
-#define _SIMPLE_AZURE_UPLOADER_CPP_H_
+#ifndef _AZURE_SINK_SIMPLE_AZURE_UPLOADER_HPP_
+#define _AZURE_SINK_SIMPLE_AZURE_UPLOADER_HPP_
 
 #include <map>
 #include <utility>
