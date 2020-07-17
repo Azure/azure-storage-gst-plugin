@@ -89,6 +89,7 @@ enum
   PROP_ACCOUNT_KEY,
   PROP_CONTAINER_NAME,
   PROP_BLOB_NAME,
+  PROP_USE_HTTPS,
   PROP_BUFFER_SIZE,
   PROP_BUFFER_COUNT
 };
@@ -173,6 +174,12 @@ gst_azure_sink_class_init (GstAzureSinkClass * klass)
       "Azure blob storage service endpoint. Set it to your blob service's url "
       "if you're using an emulator, leave it blank otherwise.", NULL,
       (G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS)));
+  
+  g_object_class_install_property (gobject_class, PROP_USE_HTTPS,
+    g_param_spec_boolean("use-https", "azure storage use https",
+      "Whether to use https or not in azure storage REST API. This is highly recommended"
+      "and enabled by default, by you can turn it off for debug purporses.",
+      TRUE, G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
 }
 
 static void
@@ -218,6 +225,10 @@ gst_azure_sink_set_property (GObject * object, guint property_id,
       gst_azure_sink_set_string_property(azuresink, value,
         &azuresink->config.blob_name, "blob-name");
       break;
+    case PROP_USE_HTTPS:
+      gst_azure_sink_set_boolean_property(azuresink, value,
+        &azuresink->config.use_https, "use-https");
+      break;
     case PROP_BUFFER_COUNT:
       gst_azure_sink_set_uint64_property(azuresink, value,
         &azuresink->config.buffer_count, "buffer-count");
@@ -256,6 +267,9 @@ gst_azure_sink_get_property (GObject * object, guint property_id,
       break;
     case PROP_BLOB_NAME:
       g_value_set_string(value, azuresink->config.blob_name);
+      break;
+    case PROP_USE_HTTPS:
+      g_value_set_boolean(value, azuresink->config.use_https);
       break;
     case PROP_BUFFER_COUNT:
       g_value_set_uint64(value, azuresink->config.buffer_count);
