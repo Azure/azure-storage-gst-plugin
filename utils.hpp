@@ -17,5 +17,4 @@ void handle(storage_outcome<T> &outcome, std::ostream &out = std::cerr) {
         out << outcome.error().message << std::endl;
     }
 }
-
 #endif
