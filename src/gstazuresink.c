@@ -39,7 +39,7 @@
 #include <gst/base/gstbasesink.h>
 
 #include "simpleazureuploader.h"
-#include "gstutils.h"
+#include "util/gstutils.h"
 
 GST_DEBUG_CATEGORY_STATIC (gst_azure_sink_debug_category);
 #define GST_CAT_DEFAULT gst_azure_sink_debug_category

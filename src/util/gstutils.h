@@ -1,7 +1,7 @@
 #ifndef _AZURE_SINK_GST_UTILS_H_
 #define _AZURE_SINK_GST_UTILS_H_
 
-#include "gstazuresink.h"
+#include <gst/gst.h>
 
 G_BEGIN_DECLS
 

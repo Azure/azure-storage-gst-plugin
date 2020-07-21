@@ -2,6 +2,7 @@
 #define _AZURE_SINK_UTILS_HPP_
 
 #include <iostream>
+#include <istream>
 #include <storage_outcome.h>
 
 using namespace azure::storage_lite;
@@ -17,4 +18,18 @@ void handle(storage_outcome<T> &outcome, std::ostream &out = std::cerr) {
         out << outcome.error().message << std::endl;
     }
 }
+
+// get the length of the content of a stream
+// note that this is not thread-safe. You should not append
+// content into the stream while calling this method.
+template <class CharT>
+unsigned int getStreamLen(std::basic_istream<CharT> &ss)
+{
+    auto cur = ss.tellg();
+    ss.seekg(0, std::ios_base::end);
+    auto end = ss.tellg();
+    ss.seekg(cur);
+    return end - cur;
+}
+
 #endif

@@ -1,15 +1,19 @@
 cmake_minimum_required(VERSION 3.0.0)
 project(azure-storage-gst-plugin VERSION 0.1.0)
 
-include(CTest)
-enable_testing()
-
 # set C++14 standard
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+add_compile_options(-Wall)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fpic")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpic")
+
 # set debug build type
 set(CMAKE_BUILD_TYPE Debug)
+
+include(CTest)
+enable_testing()
 
 # use PkgConfig to configure gstreamer & azure storage cpp sdk
 find_package(PkgConfig)
@@ -34,21 +38,15 @@ link_libraries(
     ${GSTREAMER_LIBRARIES}
     ${GSTREAMER_BASE_LIBRARIES}
     /usr/local/lib/libazure-storage-lite.so
-    ${OPENSSL_LIBRARIcES}
+    ${OPENSSL_LIBRARIES}
     ${LIBCURL_LIBRARIES}
     pthread
 )
 
-# specify compile targets
-file(GLOB SOURCE_FILES *.c *.cpp *.h *.hpp)
-list(REMOVE_ITEM SOURCE_FILES main.cpp)
-add_library(gstazureelements SHARED ${SOURCE_FILES})
-add_executable(azure-storage-gst-plugin-test main.cpp)
-target_link_libraries(azure-storage-gst-plugin-test gstazureelements)
+set(AZURE_SINK_HEADERS_DIR ${PROJECT_SOURCE_DIR}/src)
 
-add_compile_options(-Wall)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fpic")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpic")
+add_subdirectory(src)
+add_subdirectory(tests)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})

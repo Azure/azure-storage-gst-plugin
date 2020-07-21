@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.0.0)
+project(azure-storage-gst-plugin VERSION 0.1.0)
+
+include_directories(${AZURE_SINK_HEADERS_DIR})
+
+add_executable(azure-storage-gst-plugin-test testUploader.cpp)
+target_link_libraries(azure-storage-gst-plugin-test gstazureelements)
