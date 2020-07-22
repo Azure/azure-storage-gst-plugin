@@ -1,4 +1,5 @@
 #include "utils/base64.hpp"
+#include "utils/common.hpp"
 
 #include <string>
 #include <sstream>
@@ -43,6 +44,7 @@ std::string base64_encode(const char *bytes_to_encode, unsigned int len)
       // do nothing
       break;
   }
+  log() << "Base64:" << bytes_to_encode << " " << oss.str() << std::endl;
   return oss.str();
 }
 

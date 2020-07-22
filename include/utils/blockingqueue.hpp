@@ -55,18 +55,21 @@ public:
   // Pop the first element and return it atomically.
   // If the queue is empty, wait for the first element to be inserted and return it then.
   // If the queue is closed, an exception will be thrown.
-  T &pop()
+  T pop()
   {
-    std::unique_lock<std::mutex> lk(lock);
-    lk.lock();
+    log() << "Entered pop!" << std::endl;
+    std::unique_lock<std::mutex> lk(lock);  // locked implicitly here
     log() << "waiting..." << std::endl;
     // wait on condition variable
     cond.wait(lk, [this] { return this->closed || !this->q.empty(); });
     log() << "notified." << std::endl;
-    if(closed)
+    if(closed) {
+      log() << "Oh shit it is closed!" << std::endl;
+      lk.unlock();
       throw ClosedException();
+    }
     log() << "Moving new content..." << std::endl;
-    T &ret = q.front();
+    T ret = std::move(q.front());
     q.pop();
     lk.unlock();
     return ret;

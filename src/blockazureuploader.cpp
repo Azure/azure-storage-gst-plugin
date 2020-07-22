@@ -51,7 +51,7 @@ bool BlockAzureUploader::upload(std::shared_ptr<AzureUploadLocation> loc, const 
   stream->write(data, size);
   if(getStreamLen(*stream) > BLOCK_SIZE)
   {
-    reqs.push(UploadJob{blockId++, move(stream)});
+    reqs.push(UploadJob{blockId++, std::move(stream)});
     stream = std::make_unique<std::stringstream>();
   }
   return true;
@@ -65,7 +65,8 @@ bool BlockAzureUploader::flush(std::shared_ptr<AzureUploadLocation> loc)
   // commit remaining data
   if(getStreamLen(*stream) > 0) {
     log() << "Pushing uncommitted data..." << std::endl;
-    reqs.push(UploadJob{ blockId++, std::move(stream)});
+    reqs.push(UploadJob{ blockId++, std::move(stream) });
+    stream = std::make_unique<std::stringstream>();
   }
   std::this_thread::sleep_for(500ms);
   for(auto &fut: workers)
@@ -98,11 +99,14 @@ void BlockAzureUploader::run()
     UploadJob job;
     try {
       job = std::move(reqs.pop());
+      log() << "Got " << job.id << "/" << &(*job.stream) << std::endl;
     } catch (ClosedException e) {
       log() << e.what() << std::endl;
       break;
     }
-    auto len = getStreamLen(*stream);
+    if(job.stream == nullptr)
+      log() << "WTF?" << std::endl;
+    auto len = getStreamLen(*job.stream);
     // get new block id in base64 format
     std::string b64_block_id = base64_encode(std::to_string(job.id));
     log() << "Uploading content, length = " << len << " id = " << b64_block_id << std::endl;

@@ -6,14 +6,14 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 add_compile_options(-Wall)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fpic")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpic")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fpic -g")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpic -g")
 
 # set debug build type
 set(CMAKE_BUILD_TYPE Debug)
 
-include(CTest)
-enable_testing()
+# include(CTest)
+# enable_testing()
 
 # use PkgConfig to configure gstreamer & azure storage cpp sdk
 find_package(PkgConfig)
