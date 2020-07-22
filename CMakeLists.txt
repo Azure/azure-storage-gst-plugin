@@ -31,6 +31,7 @@ include_directories(
     ${LIBCURL_INCLUDE_DIRS}
     ${OPENSSL_INCLUDE_DIRS}
 )
+include_directories( ${PROJECT_SOURCE_DIR}/include)
 
 #include link directories
 link_libraries(
@@ -42,8 +43,6 @@ link_libraries(
     ${LIBCURL_LIBRARIES}
     pthread
 )
-
-set(AZURE_SINK_HEADERS_DIR ${PROJECT_SOURCE_DIR}/src)
 
 add_subdirectory(src)
 add_subdirectory(tests)

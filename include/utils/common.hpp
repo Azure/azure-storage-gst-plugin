@@ -9,7 +9,7 @@ using namespace azure::storage_lite;
 
 // error handling
 template <typename T>
-void handle(storage_outcome<T> &outcome, std::ostream &out = std::cerr) {
+inline void handle(storage_outcome<T> &outcome, std::ostream &out = std::cerr) {
     if(outcome.success()) {
         out << "Request succeeded." << std::endl;
     } else {
@@ -23,13 +23,18 @@ void handle(storage_outcome<T> &outcome, std::ostream &out = std::cerr) {
 // note that this is not thread-safe. You should not append
 // content into the stream while calling this method.
 template <class CharT>
-unsigned int getStreamLen(std::basic_istream<CharT> &ss)
+inline unsigned int getStreamLen(std::basic_istream<CharT> &ss)
 {
     auto cur = ss.tellg();
     ss.seekg(0, std::ios_base::end);
     auto end = ss.tellg();
     ss.seekg(cur);
     return end - cur;
+}
+
+inline std::ostream &log()
+{
+    return std::cerr << "[" << std::this_thread::get_id() << "]";
 }
 
 #endif

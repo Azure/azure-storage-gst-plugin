@@ -1,17 +1,13 @@
 #include "blockazureuploader.hpp"
-#include "util/base64.hpp"
-#include "util/utils.hpp"
-
+#include "utils/base64.hpp"
+#include "utils/common.hpp"
+#include <chrono>
 #include <algorithm>
 
+using namespace std::chrono_literals;
 namespace gst {
 namespace azure {
 namespace storage {
-
-std::ostream &BlockAzureUploader::log()
-{
-  return std::cerr << '[' << std::hex << std::this_thread::get_id << ']';
-}
 
 BlockAzureUploader::BlockAzureUploader(const char *account_name, const char *account_key, bool use_https)
 {
@@ -34,12 +30,15 @@ std::shared_ptr<AzureUploadLocation> BlockAzureUploader::init(const char *contai
 {
   if(loc != nullptr && destroy(loc) == false)
     log() << "Warning: failed to destroy previous workers." << std::endl;
-  auto new_loc = std::make_shared<AzureUploadLocation>(std::string(container_name), std::string(blob_name));
-
+  loc = std::make_shared<AzureUploadLocation>(std::string(container_name), std::string(blob_name));
+  // create the blob first
+  auto ss = std::stringstream();
+  auto result = client->upload_block_from_stream(loc->first, loc->second, base64_encode("0"), ss);
   for(unsigned i = 0; i < WORKER_COUNT; i++)
     workers[i] = std::async(&BlockAzureUploader::run, this);
+  stream = std::make_unique<std::stringstream>();
   window_start = 0;
-  blockId = 1;
+  blockId = 1;  // block id starts from one, first block is zero-size
   commitWorker = std::async(&BlockAzureUploader::runCommit, this);
   return loc;
 }
@@ -52,8 +51,7 @@ bool BlockAzureUploader::upload(std::shared_ptr<AzureUploadLocation> loc, const 
   stream->write(data, size);
   if(getStreamLen(*stream) > BLOCK_SIZE)
   {
-    blockid_t id = blockId++;
-    reqs.push(UploadJob{id, move(stream)});
+    reqs.push(UploadJob{blockId++, move(stream)});
     stream = std::make_unique<std::stringstream>();
   }
   return true;
@@ -63,6 +61,13 @@ bool BlockAzureUploader::flush(std::shared_ptr<AzureUploadLocation> loc)
 {
   if(!checkLoc(loc))
     return false;
+  log() << "Flushing..." << std::endl;
+  // commit remaining data
+  if(getStreamLen(*stream) > 0) {
+    log() << "Pushing uncommitted data..." << std::endl;
+    reqs.push(UploadJob{ blockId++, std::move(stream)});
+  }
+  std::this_thread::sleep_for(500ms);
   for(auto &fut: workers)
     fut.wait();
   return true;
@@ -86,7 +91,7 @@ bool BlockAzureUploader::destroy(std::shared_ptr<AzureUploadLocation> loc)
 // multithreaded worker job
 void BlockAzureUploader::run()
 {
-  log() << "Initializing new upload worker." << std::endl;
+  log() << "Initialized new upload worker." << std::endl;
   while(1)
   {
     // wait for new content
@@ -101,12 +106,9 @@ void BlockAzureUploader::run()
     // get new block id in base64 format
     std::string b64_block_id = base64_encode(std::to_string(job.id));
     log() << "Uploading content, length = " << len << " id = " << b64_block_id << std::endl;
-    auto metadata = std::vector<std::pair<std::string, std::string>>{
-      {"blockid", b64_block_id}
-    };
     // keep trying until success
     do {
-      auto fut = client->upload_block_blob_from_stream(loc->first, loc->second, *stream, metadata);
+      auto fut = client->upload_block_from_stream(loc->first, loc->second, b64_block_id, *stream);
       auto result = fut.get();
       handle(result, log());
       if(result.success())

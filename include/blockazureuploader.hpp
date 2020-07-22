@@ -13,8 +13,8 @@
 #include <condition_variable>
 
 #include "azureuploadercommon.hpp"
-#include "util/utils.hpp"
-#include "util/blockingqueue.hpp"
+#include "utils/common.hpp"
+#include "utils/blockingqueue.hpp"
 
 #include "storage_credential.h"
 #include "storage_account.h"
@@ -30,13 +30,11 @@ const unsigned int WORKER_COUNT = 8;
 class BlockAzureUploader {
 private:
   typedef long long unsigned blockid_t;
-  struct UploadJob
-  {
+  struct UploadJob {
     blockid_t id;
     std::unique_ptr<std::stringstream> stream;
   };
-  struct UploadResponse
-  {
+  struct UploadResponse {
     enum {
       OK,
       FAIL
@@ -52,8 +50,6 @@ private:
   BlockingQueue<UploadResponse> resps;
   blockid_t window_start;
   std::vector<blockid_t> window;
-  
-  std::ostream &log();
   blockid_t blockId;
 
 public:

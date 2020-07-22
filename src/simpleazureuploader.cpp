@@ -1,7 +1,7 @@
 // async azure uploader using azure-storage-cpplite
 #include "simpleazureuploader.h"
 #include "simpleazureuploader.hpp"
-
+#include "utils/common.hpp"
 #include <gst/gst.h>
 #include <iostream>
 #include <iomanip>
@@ -11,12 +11,6 @@
 namespace gst {
 namespace azure {
 namespace storage {
-
-
-std::ostream &UploadWorker::log()
-{
-  return std::cerr << '[' << std::hex << std::this_thread::get_id() << ']' << std::dec;
-}
 
 // individual uploader logics
 bool UploadWorker::append(UploadBuffer buffer)

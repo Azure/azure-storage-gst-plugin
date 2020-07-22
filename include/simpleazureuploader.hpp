@@ -7,7 +7,7 @@
 #include <thread>
 #include <mutex>
 #include <condition_variable>
-#include "util/utils.hpp"
+#include "utils/common.hpp"
 #include "azureuploadercommon.hpp"
 
 #include "storage_credential.h"
@@ -37,8 +37,6 @@ public:
   void run();
   void flush();
   void stop();
-private:
-  std::ostream &log();
 };
 
 const int AZURE_CLIENT_CONCCURRENCY = 8;

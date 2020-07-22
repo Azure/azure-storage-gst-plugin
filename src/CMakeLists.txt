@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.0.0)
-project(azure-storage-gst-plugin VERSION 0.1.0)
+project(azure-storage-gst-plugin)
+
+add_subdirectory(utils)
 
 # specify compile targets
-include_directories(util)
-file(GLOB SOURCE_FILES util/* *.c *.cpp *.h *.hpp)
+file(GLOB SOURCE_FILES *.c *.cpp *.h *.hpp)
 add_library(gstazureelements SHARED ${SOURCE_FILES})
+target_link_libraries(gstazureelements base64)

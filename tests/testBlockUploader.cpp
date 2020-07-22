@@ -4,7 +4,6 @@
 #include <thread>
 
 #include "blockazureuploader.hpp"
-#include "util/utils.hpp"
 
 using namespace std::chrono_literals;
 int main(int argc, char** argv) {
@@ -16,8 +15,8 @@ int main(int argc, char** argv) {
   // Test our azure uploader
   gst::azure::storage::BlockAzureUploader uploader(account_name.c_str(), account_key.c_str(), use_https);
   auto loc = uploader.init("videostore", "teststream");
-  uploader.upload(loc, "asdfasdfasdf", 12);
-  uploader.upload(loc, "hahaha", 6);
+  uploader.upload(loc, "asdfasdfasdf12341234", 20);
+  uploader.upload(loc, "hahaha1234", 10);
   std::this_thread::sleep_for(2s);
   uploader.upload(loc, "heiheihei", 9);
   uploader.flush(loc);
