@@ -8,6 +8,7 @@
 #include <mutex>
 #include <condition_variable>
 #include "util/utils.hpp"
+#include "azureuploadercommon.hpp"
 
 #include "storage_credential.h"
 #include "storage_account.h"
@@ -18,8 +19,6 @@ namespace gst {
 namespace azure {
 namespace storage {
 
-typedef std::pair<std::string, std::string> AzureUploadLocation;
-typedef std::pair<const char *, size_t> UploadBuffer;
 class UploadWorker {
   std::shared_ptr<AzureUploadLocation> loc;
   std::mutex stream_lock, finish_lock;

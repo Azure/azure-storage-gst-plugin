@@ -85,7 +85,6 @@ void UploadWorker::flush()
   log() << "Flushing." << std::endl;
   std::unique_lock<std::mutex> lk(finish_lock);
   finish_cond.wait(lk, [this] { return this->finished; });
-  lk.unlock();
 }
 
 void UploadWorker::stop()

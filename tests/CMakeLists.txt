@@ -3,5 +3,6 @@ project(azure-storage-gst-plugin VERSION 0.1.0)
 
 include_directories(${AZURE_SINK_HEADERS_DIR})
 
-add_executable(azure-storage-gst-plugin-test testUploader.cpp)
+add_executable(simple-uploader-test testSimpleUploader.cpp)
+add_executable(block-uploader-test testBlockUploader.cpp)
 target_link_libraries(azure-storage-gst-plugin-test gstazureelements)

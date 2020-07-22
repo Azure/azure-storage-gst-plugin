@@ -5,57 +5,57 @@
 #include <utility>
 #include <memory>
 #include <thread>
-#include <vector>
+#include <array>
 #include <mutex>
 #include <atomic>
 #include <sstream>
+#include <queue>
 #include <condition_variable>
+
+#include "azureuploadercommon.hpp"
 #include "util/utils.hpp"
+#include "util/blockingqueue.hpp"
 
 #include "storage_credential.h"
 #include "storage_account.h"
 #include "blob/blob_client.h"
 #include "blob/append_block_request.h"
 
-#include "simpleazureuploader.hpp"
-
 namespace gst {
 namespace azure {
 namespace storage {
 
-// only supports one location at a time.
-class BlockUploadWorker {
-  std::shared_ptr<AzureUploadLocation> loc;
-  std::mutex stream_lock, finish_lock;
-  std::unique_ptr<std::stringstream> stream;
-  std::condition_variable stream_cond, finish_cond;
-  std::atomic_bool finished;
-  std::atomic_bool stopped;
-  std::shared_ptr<::azure::storage_lite::blob_client> client;
-  std::thread worker;
-public:
-  BlockUploadWorker(std::shared_ptr<AzureUploadLocation> loc,
-    std::shared_ptr<::azure::storage_lite::blob_client> client):
-    loc(loc), stopped(false), finished(true),
-    client(client), worker([this] { this->run(); }) {}
-  bool append(UploadBuffer buffer);
-  void run();
-  void flush();
-  void stop();
-
-private:
-  std::ostream &log();
-  static long long int getBlockId();
-  static std::atomic_llong counter;
-};
-
-// const int AZURE_CLIENT_CONCCURRENCY = 8;
-
+const unsigned int BLOCK_SIZE = 1048576;
+const unsigned int WORKER_COUNT = 8;
 class BlockAzureUploader {
 private:
+  typedef long long unsigned blockid_t;
+  struct UploadJob
+  {
+    blockid_t id;
+    std::unique_ptr<std::stringstream> stream;
+  };
+  struct UploadResponse
+  {
+    enum {
+      OK,
+      FAIL
+    } code;
+    blockid_t id;
+  };
   std::shared_ptr<::azure::storage_lite::blob_client> client;
   std::shared_ptr<AzureUploadLocation> loc;
-  std::vector<BlockUploadWorker> workers;
+  std::unique_ptr<std::stringstream> stream;
+  std::array<std::future<void>, WORKER_COUNT> workers;
+  std::future<void> commitWorker;
+  BlockingQueue<UploadJob> reqs;
+  BlockingQueue<UploadResponse> resps;
+  blockid_t window_start;
+  std::vector<blockid_t> window;
+  
+  std::ostream &log();
+  blockid_t blockId;
+
 public:
   BlockAzureUploader(const char *account_name, const char *account_key, bool use_https);
   std::shared_ptr<AzureUploadLocation> init(const char *container_name, const char *blob_name);
@@ -63,7 +63,9 @@ public:
   bool flush(std::shared_ptr<AzureUploadLocation> loc);
   bool destroy(std::shared_ptr<AzureUploadLocation> loc);
 private:
-  BlockUploadWorker &getWorker();
+  bool checkLoc(std::shared_ptr<AzureUploadLocation> loc);
+  void run();
+  void runCommit();
 };
 
 }
