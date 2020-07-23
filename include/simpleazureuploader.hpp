@@ -31,7 +31,7 @@ class UploadWorker {
 public:
   UploadWorker(std::shared_ptr<AzureUploadLocation> loc,
     std::shared_ptr<::azure::storage_lite::blob_client> client):
-    loc(loc), stream(std::move(std::make_unique<std::stringstream>())), stopped(false), finished(true),
+    loc(loc), stream(std::move(std::make_unique<std::stringstream>())), finished(true), stopped(false),
     client(client), worker([this] { this->run(); }) {}
   bool append(UploadBuffer buffer);
   void run();

@@ -106,7 +106,7 @@ SimpleAzureUploader::init(const char *container_name, const char *blob_name)
   // build a new upload worker in place
   auto worker = std::make_unique<UploadWorker>(ret, this->client);
   this->uploads.emplace(ret, move(worker));
-  return std::move(ret);
+  return ret;
 }
 
 // append block of data. Push data to queue and return immediately.
