@@ -40,8 +40,7 @@ std::shared_ptr<AzureUploadLocation> BlockAzureUploader::init(const char *contai
   for(unsigned i = 0; i < WORKER_COUNT; i++)
     workers[i] = std::async(&BlockAzureUploader::run, this);
   stream = std::make_unique<std::stringstream>();
-  window_start = 0;
-  blockId = 0;  // block id starts from one, first block is zero-size
+  window_start = blockId = 0;
   commitWorker = std::async(&BlockAzureUploader::runCommit, this);
   return loc;
 }
@@ -139,11 +138,12 @@ void BlockAzureUploader::runCommit()
         if(resp.code == UploadResponse::OK)
         {
           window.push_back(resp.id);
-          std::push_heap(window.begin(), window.end());
-          log() << "Committer received response of id " << base64_encode(std::to_string(resp.id)) << std::endl;
+          std::push_heap(window.begin(), window.end(), [](blockid_t a, blockid_t b) { return a > b; });
+          log() << "Committer received response of id " << resp.id << std::endl;
         }
       } while(!resps.empty());
     } catch (ClosedException &e) {
+      log() << "Response queue is closed." << std::endl;
       break;
     }
     while(window_start == window.front())
@@ -167,8 +167,7 @@ void BlockAzureUploader::runCommit()
   auto result = fut.get();
   handle(result);
   if(result.success()) {
-    window_start = new_start;
-    log() << "Committed, now window start is " << window_start << std::endl;
+    log() << "Committed, window start = " << window_start << std::endl;
   }
   log() << "Comitter is exiting." << std::endl;
 }
