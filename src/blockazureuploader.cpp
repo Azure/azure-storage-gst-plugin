@@ -51,7 +51,7 @@ bool BlockAzureUploader::upload(std::shared_ptr<AzureUploadLocation> loc, const 
     return false;
   // Blocks are uploaded only if buffer(1MiB by default) overflows
   stream->write(data, size);
-  if(getStreamLen(*stream) > BLOCK_SIZE)
+  if(getStreamLen(*stream) >= BLOCK_SIZE)
   {
     reqs.push(UploadJob{blockId++, std::move(stream)});
     stream = std::make_unique<std::stringstream>();
@@ -70,9 +70,8 @@ bool BlockAzureUploader::flush(std::shared_ptr<AzureUploadLocation> loc)
     reqs.push(UploadJob{ blockId++, std::move(stream) });
     stream = std::make_unique<std::stringstream>();
   }
-  std::this_thread::sleep_for(500ms);
-  for(auto &fut: workers)
-    fut.wait();
+  // wait for the request queue to become empty
+  reqs.wait_empty();
   return true;
 }
 
@@ -82,9 +81,11 @@ bool BlockAzureUploader::destroy(std::shared_ptr<AzureUploadLocation> loc)
   if(!checkLoc(loc))
     return false;
   reqs.close();
+  reqs.wait_empty();
   // wait for all current workers to finish their jobs
   for(auto &fut: workers)
     fut.wait();
+  // wait for the committer to commit all blocks
   resps.close();
   if(commitWorker.valid())
     commitWorker.wait();
@@ -107,7 +108,7 @@ void BlockAzureUploader::run()
     }
     auto len = getStreamLen(*job.stream);
     // get new block id in base64 format
-    std::string b64_block_id = base64_encode(std::to_string(job.id));
+    std::string b64_block_id = base64_encode(job.id);
     log() << "Uploading content, length = " << len << " id = " << b64_block_id << std::endl;
     // keep trying until success
     do {
@@ -139,6 +140,7 @@ void BlockAzureUploader::runCommit()
         {
           window.push_back(resp.id);
           std::push_heap(window.begin(), window.end(), [](blockid_t a, blockid_t b) { return a > b; });
+          for(auto ite = window.begin(); ite != window.end(); ++ite) std::cerr << *ite << ' ';
           log() << "Committer received response of id " << resp.id << std::endl;
         }
       } while(!resps.empty());
@@ -148,26 +150,26 @@ void BlockAzureUploader::runCommit()
     }
     while(window_start == window.front())
     {
-      std::pop_heap(window.begin(), window.end());
+      std::pop_heap(window.begin(), window.end(), [](blockid_t a, blockid_t b) { return a > b; });
       window.pop_back();
       window_start += 1;
-      log() << "Pushing window start to " << window_start << std::endl;
+      // log() << "Pushing window start to " << window_start << std::endl;
     }
   }
   // finally do commit
   std::vector<put_block_list_request_base::block_item> block_list;
   for(blockid_t id = 0; id < window_start; id++)
     block_list.push_back(put_block_list_request_base::block_item{
-      base64_encode(std::to_string(id)), 
+      base64_encode(id),
       put_block_list_request_base::block_type::latest
     });
-  // currently no metadata
+  // no metadata needed
   auto metadata = std::vector<std::pair<std::string, std::string>>();
   auto fut = client->put_block_list(loc->first, loc->second, block_list, metadata);
   auto result = fut.get();
   handle(result);
   if(result.success()) {
-    log() << "Committed, window start = " << window_start << std::endl;
+    log() << "Committed, last block id = " << window_start << std::endl;
   }
   log() << "Comitter is exiting." << std::endl;
 }

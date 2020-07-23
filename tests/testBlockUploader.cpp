@@ -17,15 +17,17 @@ int main(int argc, char** argv) {
   gst::azure::storage::BlockAzureUploader uploader(account_name.c_str(), account_key.c_str(), use_https);
   auto loc = uploader.init("videostore", "teststream");
   // now upload a lot of contents...
-  const char *buf1 = getRandomBytes(1048576);
-  const char *buf2 = getRandomBytes(1048576);
-  const char *buf3 = getRandomBytes(1048576);
-  const char *buf4 = getRandomBytes(1048576);
-  uploader.upload(loc, buf1, 1048576);
-  uploader.upload(loc, buf2, 1048576);
-  uploader.upload(loc, buf3, 1048576);
-  uploader.upload(loc, buf4, 1048576);
+  std::srand(std::time(nullptr));
+  const char *bufs[4] = {
+    getRandomBytes(1048576),
+    getRandomBytes(1048576),
+    getRandomBytes(1048576),
+    getRandomBytes(1048576)
+  };
+  // upload 128MiB of content
+  for(int i = 0; i < 128; i++)
+    uploader.upload(loc, bufs[std::rand() % 4], 1048576);
   uploader.flush(loc);
   uploader.destroy(loc);
   return 0;
-} 
+}

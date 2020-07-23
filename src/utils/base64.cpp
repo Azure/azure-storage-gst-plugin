@@ -4,6 +4,7 @@
 #include <string>
 #include <sstream>
 #include <cctype>
+#include <iomanip>
 
 static constexpr char b64chars[] = 
   "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -44,11 +45,16 @@ std::string base64_encode(const char *bytes_to_encode, unsigned int len)
       // do nothing
       break;
   }
-  log() << "Base64:" << bytes_to_encode << " " << oss.str() << std::endl;
   return oss.str();
 }
 
 std::string base64_encode(const std::string s)
 {
   return base64_encode(s.c_str(), s.length());
+}
+
+std::string base64_encode(long long int i) {
+  std::stringstream ss;
+  ss << std::setfill('0') << std::hex << std::setw(20) << i;
+  return base64_encode(ss.str());
 }

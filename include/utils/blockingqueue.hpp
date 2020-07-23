@@ -22,6 +22,7 @@ class BlockingQueue
   std::queue<T> q;
   std::mutex lock;
   std::condition_variable cond;
+  std::condition_variable emp;
   bool closed;
 
 public:
@@ -53,19 +54,27 @@ public:
     // wait on condition variable
     cond.wait(lk, [this] { return this->closed || !this->q.empty(); });
     if(closed) {
-      lk.unlock();
       throw ClosedException();
     }
     T ret = std::move(q.front());
     q.pop();
-    lk.unlock();
+    if(q.empty())
+      emp.notify_all();
     return ret;
   }
-
+  
+  // non-blockingly return if the queue is empty
   bool empty()
   {
     std::lock_guard<std::mutex> guard(lock);
     return q.empty();
+  }
+
+  // wait for a queue to become empty
+  void wait_empty()
+  {
+    std::unique_lock<std::mutex> lk(lock);
+    emp.wait(lk, [this] { return this->q.empty(); });
   }
   // close current concurrent queue, return nullptr on all threads waiting on new content.
   void close()
