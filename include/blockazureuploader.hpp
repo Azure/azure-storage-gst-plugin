@@ -26,7 +26,7 @@ namespace azure {
 namespace storage {
 
 const unsigned int BLOCK_SIZE = 1048576;
-const unsigned int WORKER_COUNT = 8;
+const unsigned int WORKER_COUNT = 16;
 class BlockAzureUploader {
 private:
   typedef long long unsigned blockid_t;

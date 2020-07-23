@@ -145,7 +145,6 @@ void BlockAzureUploader::runCommit()
         {
           window.push_back(resp.id);
           std::push_heap(window.begin(), window.end(), [](blockid_t a, blockid_t b) { return a > b; });
-          for(auto ite = window.begin(); ite != window.end(); ++ite) std::cerr << *ite << ' ';
           log() << "Committer received response of id " << resp.id << std::endl;
         }
       } while(!resps.empty());
