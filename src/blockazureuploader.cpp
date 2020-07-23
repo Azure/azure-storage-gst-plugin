@@ -33,7 +33,10 @@ std::shared_ptr<AzureUploadLocation> BlockAzureUploader::init(const char *contai
   loc = std::make_shared<AzureUploadLocation>(std::string(container_name), std::string(blob_name));
   // create the blob first
   auto ss = std::stringstream();
-  auto result = client->upload_block_from_stream(loc->first, loc->second, base64_encode("0"), ss);
+  log() << "Creating block blob..." << std::endl;
+  auto fut = client->upload_block_blob_from_stream(loc->first, loc->second, ss, std::vector<std::pair<std::string, std::string>());
+  auto result = fut.get();
+  handle(result);
   for(unsigned i = 0; i < WORKER_COUNT; i++)
     workers[i] = std::async(&BlockAzureUploader::run, this);
   stream = std::make_unique<std::stringstream>();
@@ -99,13 +102,10 @@ void BlockAzureUploader::run()
     UploadJob job;
     try {
       job = std::move(reqs.pop());
-      log() << "Got " << job.id << "/" << &(*job.stream) << std::endl;
     } catch (ClosedException e) {
       log() << e.what() << std::endl;
       break;
     }
-    if(job.stream == nullptr)
-      log() << "WTF?" << std::endl;
     auto len = getStreamLen(*job.stream);
     // get new block id in base64 format
     std::string b64_block_id = base64_encode(std::to_string(job.id));
@@ -128,7 +128,7 @@ void BlockAzureUploader::run()
 void BlockAzureUploader::runCommit()
 {
   using ::azure::storage_lite::put_block_list_request_base;
-  log() << "Initalizing committer." << std::endl;
+  log() << "Initializing committer." << std::endl;
   while(1)
   {
     // fetch all responses already enqueued

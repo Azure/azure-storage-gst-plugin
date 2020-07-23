@@ -22,4 +22,4 @@ int main(int argc, char** argv) {
   uploader.flush(loc);
   uploader.destroy(loc);
   return 0;
-}
+} 
