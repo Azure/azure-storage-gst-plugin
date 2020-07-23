@@ -1,8 +1,13 @@
 #include "blockazureuploader.hpp"
-#include "utils/base64.hpp"
-#include "utils/common.hpp"
+#include "blockazureuploader.h"
+
 #include <chrono>
 #include <algorithm>
+#include <gst/gst.h>
+
+#include "utils/base64.hpp"
+#include "utils/common.hpp"
+
 
 using namespace std::chrono_literals;
 namespace gst {
@@ -177,3 +182,75 @@ void BlockAzureUploader::runCommit()
 }
 }
 }
+
+static inline gst::azure::storage::BlockAzureUploader *block_uploader(GstAzureUploader *uploader)
+{
+  return static_cast<gst::azure::storage::BlockAzureUploader *>(uploader->impl);
+}
+
+static inline std::shared_ptr<gst::azure::storage::AzureUploadLocation> &location(GstAzureUploader *uploader)
+{
+  return *(static_cast<std::shared_ptr<gst::azure::storage::AzureUploadLocation> *>(uploader->data));
+}
+
+// c interfaces
+G_BEGIN_DECLS
+
+gboolean gst_block_azure_uploader_init(GstAzureUploader *uploader, const gchar *container_name, const gchar *blob_name);
+gboolean gst_block_azure_uploader_flush(GstAzureUploader *uploader);
+gboolean gst_block_azure_uploader_destroy(GstAzureUploader *uploader);
+gboolean gst_block_azure_uploader_upload(GstAzureUploader *uploader, const gchar *data, const gsize size);
+
+GstAzureUploaderClass *getBlockUploaderClass()
+{
+  GstAzureUploaderClass *ret = new GstAzureUploaderClass();
+  ret->init = gst_block_azure_uploader_init;
+  ret->flush = gst_block_azure_uploader_flush;
+  ret->destroy = gst_block_azure_uploader_destroy;
+  ret->upload = gst_block_azure_uploader_upload;
+  return ret;
+}
+
+
+GstAzureUploader *gst_azure_sink_block_uploader_new(const GstAzureSinkConfig *config) {
+  static GstAzureUploaderClass *defaultClass = getBlockUploaderClass();
+  if(config == NULL)
+    return NULL;
+  GstAzureUploader *uploader = new GstAzureUploader();
+  if(uploader == NULL)
+    return NULL;
+  uploader->klass = defaultClass;
+  uploader->impl = (void *)(new gst::azure::storage::BlockAzureUploader(
+    config->account_name, config->account_key, (bool)config->use_https));
+  uploader->data = (void *)(new std::shared_ptr<gst::azure::storage::AzureUploadLocation>(nullptr));
+  return uploader;
+}
+
+gboolean gst_block_azure_uploader_init(GstAzureUploader *uploader, const gchar *container_name, const gchar *blob_name)
+{
+  location(uploader) = block_uploader(uploader)->init(container_name, blob_name);
+  return TRUE;
+}
+
+gboolean gst_block_azure_uploader_flush(GstAzureUploader *uploader)
+{
+  if(location(uploader) == nullptr)
+    return FALSE;
+  return block_uploader(uploader)->flush(location(uploader));
+}
+
+gboolean gst_block_azure_uploader_destroy(GstAzureUploader *uploader)
+{
+  if(location(uploader) == nullptr)
+    return FALSE;
+  return block_uploader(uploader)->destroy(location(uploader));
+}
+
+gboolean gst_block_azure_uploader_upload(GstAzureUploader *uploader, const gchar *data, const gsize size)
+{
+  if(location(uploader) == nullptr)
+    return FALSE;
+  return block_uploader(uploader)->upload(location(uploader), (const char *)data, (size_t)size);
+}
+
+G_END_DECLS

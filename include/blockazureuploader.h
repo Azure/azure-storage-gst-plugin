@@ -7,7 +7,7 @@ G_BEGIN_DECLS
 
 GstAzureUploaderClass *getBlockUploaderClass();
 // default simple uploader constructor
-GstAzureUploader *gst_azure_sink_block_ploader_new(const GstAzureSinkConfig *config);
+GstAzureUploader *gst_azure_sink_block_uploader_new(const GstAzureSinkConfig *config);
 
 G_END_DECLS
 
