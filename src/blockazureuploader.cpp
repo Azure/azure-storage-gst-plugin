@@ -49,7 +49,8 @@ std::shared_ptr<AzureUploadLocation> BlockAzureUploader::init(const char *contai
   // generate stream object
   stream = std::make_unique<std::stringstream>();
   // configure block id
-  nextCommitId = nextId = committedId = 0;
+  nextCommitId = nextId = 1;
+  committedId = 0;
   // configure sync semaphore
   sem = worker_count;
   // spawn all workers
@@ -172,7 +173,7 @@ void BlockAzureUploader::commitBlock(blockid_t id)
 // upload put block list
 void BlockAzureUploader::doCommit()
 {
-  if(nextCommitId == 0 || nextCommitId == committedId + 1)
+  if(nextCommitId == committedId + 1)
     // nothing to do
     return;
   waitFlush();

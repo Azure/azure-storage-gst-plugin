@@ -15,6 +15,7 @@ void gst_azure_sink_set_string_property(GstAzureSink *sink, const GValue *value,
         *property = g_strdup(v);
         GST_INFO_OBJECT(sink, "Setting property %s: %s", property_name, *property);
     } else {
+        gst_print("Resetting property %s...\n", property_name);
         *property = NULL;
     }
 }

@@ -90,6 +90,7 @@ enum
   PROP_ACCOUNT_KEY,
   PROP_CONTAINER_NAME,
   PROP_BLOB_NAME,
+  PROP_LOCATION,
   PROP_USE_HTTPS,
   PROP_BLOCK_SIZE,
   PROP_WORKER_COUNT,
@@ -172,6 +173,13 @@ gst_azure_sink_class_init (GstAzureSinkClass * klass)
       "The file name you want to write into.", NULL,
       (G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS)));
 
+  g_object_class_install_property (gobject_class, PROP_LOCATION,
+    g_param_spec_string ("location", "azure blob storage blob location",
+      "The blob you want to write into in container-name/blob-name format. "
+      "This property is to provide compatibility with other plugins. "
+      "If container name and blob name are provided, this property is ignored.", NULL,
+      (G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS)));
+
   g_object_class_install_property (gobject_class, PROP_BLOB_ENDPOINT,
     g_param_spec_string ("blob-endpoint", "azure blob storage endpoint",
       "Azure blob storage service endpoint. Set it to your blob service's url "
@@ -246,6 +254,19 @@ gst_azure_sink_set_property (GObject * object, guint property_id,
       gst_azure_sink_set_string_property(azuresink, value,
         &azuresink->config.blob_name, "blob-name");
       break;
+    case PROP_LOCATION:
+    {
+      const gchar *v = g_value_get_string(value);
+      if(v != NULL) {
+        gchar **tokens = g_strsplit(v, "/", 2);
+        if(tokens[0] != NULL)
+          azuresink->config.container_name = tokens[0];
+        if(tokens[1] != NULL)
+          azuresink->config.blob_name = tokens[1];
+        gst_print("Settting container name to %s, blob name to %s.\n", tokens[0], tokens[1]);
+      }
+      break;
+    }
     case PROP_USE_HTTPS:
       gst_azure_sink_set_boolean_property(azuresink, value,
         &azuresink->config.use_https, "use-https");
@@ -294,6 +315,12 @@ gst_azure_sink_get_property (GObject * object, guint property_id,
     case PROP_CONTAINER_NAME:
       g_value_set_string(value, azuresink->config.container_name);
       break;
+    case PROP_LOCATION:
+    {
+      const gchar *loc = g_strconcat(azuresink->config.container_name, "/", azuresink->config.blob_name, NULL);
+      g_value_set_string(value, loc);
+      break;
+    }
     case PROP_BLOB_NAME:
       g_value_set_string(value, azuresink->config.blob_name);
       break;
