@@ -42,7 +42,9 @@ inline std::ostream &nullstream()
     return os;
 }
 
+// this flag determines whether to use output or not
 // #define OUTPUT_LOG
+#undef OUTPUT_LOG
 
 inline std::ostream &log()
 {

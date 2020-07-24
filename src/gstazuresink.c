@@ -654,9 +654,11 @@ gst_azure_sink_read_buffer(GstAzureSink *sink, GstBuffer *buffer)
   {
     GST_ELEMENT_ERROR(sink, RESOURCE, WRITE,
       ("Failed to append to uploader's buffer."), (NULL));
+    gst_buffer_unmap(buffer, &map_info);
     return FALSE;
   }
   sink->total_bytes_written += map_info.size;
+  gst_buffer_unmap(buffer, &map_info);
   return TRUE;
 }
 

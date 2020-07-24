@@ -86,14 +86,14 @@ private:
     // log() << "sem=" << sem << std::endl;
     complete_cond.notify_one();
   }
-  // should not be called on multiple threads
+  // wait for worker threads to complete current upload and start waiting
   void waitFlush()
   {
     std::unique_lock<std::mutex> lk(flush_lock);
     flushing = true;
     complete_cond.wait(lk, [this] { return this->sem == this->worker_count; });
   }
-  // should not be called on multiple threads
+  // disable flush so that worker threads can continue to work
   void disableFlush()
   {
     std::lock_guard<std::mutex> guard(flush_lock);
