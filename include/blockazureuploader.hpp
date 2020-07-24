@@ -75,16 +75,16 @@ private:
   std::condition_variable complete_cond;
   void enterJob()
   {
-    std::lock_guard<std::mutex> guard(flush_lock);
+    std::unique_lock<std::mutex> lk(flush_lock);
+    flush_cond.wait(lk, [this] {return !this->flushing; });
     sem--;
   }
   void leaveJob()
   {
     std::unique_lock<std::mutex> lk(flush_lock);
     sem++;
-    log() << "sem = " << sem << std::endl;
+    // log() << "sem=" << sem << std::endl;
     complete_cond.notify_one();
-    flush_cond.wait(lk, [this] { return !this->flushing; });
   }
   // should not be called on multiple threads
   void waitFlush()

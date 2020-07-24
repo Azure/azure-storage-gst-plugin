@@ -53,6 +53,12 @@ std::string base64_encode(const std::string s)
   return base64_encode(s.c_str(), s.length());
 }
 
+// std::string base64_encode(long long int i) {
+//   return base64_encode((const char *)(&i), sizeof(i));
+// }
+
 std::string base64_encode(long long int i) {
-  return base64_encode((const char *)(&i), sizeof(i));
+  std::stringstream ret;
+  ret << std::setfill('0') << std::setw(8) << std::hex << i;
+  return ret.str();
 }

@@ -35,7 +35,7 @@ inline unsigned int getStreamLen(std::basic_istream<CharT> &ss)
 
 inline std::ostream &log()
 {
-    return std::cerr << "[" << std::hex << std::this_thread::get_id() << "]";
+    return std::cerr << "[" << std::hex << std::this_thread::get_id() << "]" << std::dec;
 }
 
 #endif

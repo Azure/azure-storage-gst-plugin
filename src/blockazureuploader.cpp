@@ -46,10 +46,6 @@ std::shared_ptr<AzureUploadLocation> BlockAzureUploader::init(const char *contai
     log() << "Warning: failed to destroy previous workers." << std::endl;
   loc = std::make_shared<AzureUploadLocation>(std::string(container_name), std::string(blob_name));
   auto ss = std::stringstream();
-  // log() << "Creating block blob..." << std::endl;
-  // auto fut = client->upload_block_blob_from_stream(loc->first, loc->second, ss, std::vector<std::pair<std::string, std::string>>());
-  // auto result = fut.get();
-  // handle(result);
   // generate stream object
   stream = std::make_unique<std::stringstream>();
   // configure block id
@@ -99,6 +95,7 @@ bool BlockAzureUploader::flush(std::shared_ptr<AzureUploadLocation> loc)
   waitFlush();
   disableFlush();
   doCommit();
+  log() << "Flushed" << std::endl;
   return true;
 }
 
@@ -107,12 +104,13 @@ bool BlockAzureUploader::destroy(std::shared_ptr<AzureUploadLocation> loc)
 {
   if(!checkLoc(loc))
     return false;
+  log() << "Destroying..." << std::endl;
   reqs.close();
   reqs.wait_empty();
-  // wait for all current workers to finish their jobs
+  log() << "Waiting for all workers to exit..." << std::endl;
   for(auto &fut: workers)
     fut.wait();
-  // wait for the committer to commit all blocks
+  log() << "Waiting for committer to exit..." << std::endl;
   resps.close();
   if(commitWorker.valid())
     commitWorker.wait();
@@ -138,7 +136,7 @@ void BlockAzureUploader::run()
     auto len = getStreamLen(*job.stream);
     // get new block id in base64 format
     std::string b64_block_id = base64_encode(job.id);
-    log() << "Uploading content, length = " << len << " id = " << job.id << std::endl;
+    log() << "Uploading content, length = " << len << ", id = " << job.id << std::endl;
     // keep trying until success
     do {
       auto fut = client->upload_block_from_stream(loc->first, loc->second, b64_block_id, *job.stream);
@@ -148,7 +146,7 @@ void BlockAzureUploader::run()
         break;
       log() << "Retrying " << b64_block_id << "..." << std::endl;
     } while(1);
-    // success, send back response
+    // send back response
     resps.push(UploadResponse{UploadResponse::OK, job.id});
     leaveJob();
   }
@@ -178,23 +176,31 @@ void BlockAzureUploader::doCommit()
     // nothing to do
     return;
   waitFlush();
-  log() << "Comitting, last block id = " << (nextCommitId - 1) << std::endl;
+  // NOTE collect all responses again, otherwise data might be lost
+  do {
+    auto resp = resps.pop();
+    if(resp.code == UploadResponse::OK)
+      commitBlock(resp.id);
+  } while(!resps.empty());
   // no metadata needed
   auto metadata = std::vector<std::pair<std::string, std::string>>();
-  auto fut = client->put_block_list(loc->first, loc->second, block_list, metadata);
-
-  auto result = fut.get();
-  handle(result, log());
-  if(result.success()) {
-    lastCommit = std::chrono::steady_clock::now();
-    committedId = nextCommitId - 1;
-    log() << "Committed, last block id = " << committedId << std::endl;
-    // update all committed block to "committed"
-    // for(auto &b: block_list)
-    // {
-    //   b.type = put_block_list_request_base::block_type::committed;
-    // }
-  }
+  do {
+    log() << "Comitting, last block id = " << (nextCommitId - 1) << std::endl;
+    auto fut = client->put_block_list(loc->first, loc->second, block_list, metadata);
+    auto result = fut.get();
+    handle(result, log());
+    if(result.success()) {
+      lastCommit = std::chrono::steady_clock::now();
+      committedId = nextCommitId - 1;
+      log() << "Committed, last block id = " << committedId << std::endl;
+      // update all committed block to "committed"
+      for(auto &b: block_list)
+      {
+        b.type = put_block_list_request_base::block_type::committed;
+      }
+      break;
+    }
+  } while(1);
   disableFlush();
 }
 
