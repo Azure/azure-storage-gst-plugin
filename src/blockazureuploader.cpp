@@ -19,13 +19,15 @@ BlockAzureUploader::BlockAzureUploader(
   unsigned long block_size, unsigned long worker_count,
   unsigned long commit_block_count, unsigned long commit_interval_ms)
   : block_size(block_size), worker_count(worker_count),
-    commit_block_count(commit_block_count), commit_interval_ms(commit_interval_ms)
+    commit_block_count(commit_block_count), commit_interval_ms(commit_interval_ms),
+    flushing(false)
 {
   std::string name(account_name);
   std::string key(account_key);
   auto credential = std::make_shared<::azure::storage_lite::shared_key_credential>(name, key);
   auto storage_account = std::make_shared<::azure::storage_lite::storage_account>(name, credential, use_https);
-  client = std::make_shared<::azure::storage_lite::blob_client>(storage_account, worker_count);
+  // concurrenct uploaders + 1 comitter
+  client = std::make_shared<::azure::storage_lite::blob_client>(storage_account, worker_count + 1);
 }
 
 // Check if the location is correct.
@@ -43,16 +45,17 @@ std::shared_ptr<AzureUploadLocation> BlockAzureUploader::init(const char *contai
   if(loc != nullptr && destroy(loc) == false)
     log() << "Warning: failed to destroy previous workers." << std::endl;
   loc = std::make_shared<AzureUploadLocation>(std::string(container_name), std::string(blob_name));
-  // create the blob first
   auto ss = std::stringstream();
-  log() << "Creating block blob..." << std::endl;
-  auto fut = client->upload_block_blob_from_stream(loc->first, loc->second, ss, std::vector<std::pair<std::string, std::string>>());
-  auto result = fut.get();
-  handle(result);
+  // log() << "Creating block blob..." << std::endl;
+  // auto fut = client->upload_block_blob_from_stream(loc->first, loc->second, ss, std::vector<std::pair<std::string, std::string>>());
+  // auto result = fut.get();
+  // handle(result);
   // generate stream object
   stream = std::make_unique<std::stringstream>();
   // configure block id
-  completedId = nextId = committedId = 0;
+  nextCommitId = nextId = committedId = 0;
+  // configure sync semaphore
+  sem = worker_count;
   // spawn all workers
   workers = std::vector<std::future<void>>();
   workers.reserve(worker_count);
@@ -88,12 +91,14 @@ bool BlockAzureUploader::flush(std::shared_ptr<AzureUploadLocation> loc)
   log() << "Flushing..." << std::endl;
   // commit remaining data
   if(getStreamLen(*stream) > 0) {
-    log() << "Pushing uncommitted data..." << std::endl;
     reqs.push(UploadJob{ nextId++, std::move(stream) });
     stream = std::make_unique<std::stringstream>();
   }
-  // wait for the request queue to become empty
+  // wait for all requests to complete
   reqs.wait_empty();
+  waitFlush();
+  disableFlush();
+  doCommit();
   return true;
 }
 
@@ -128,10 +133,12 @@ void BlockAzureUploader::run()
       log() << e.what() << std::endl;
       break;
     }
+
+    enterJob();
     auto len = getStreamLen(*job.stream);
     // get new block id in base64 format
     std::string b64_block_id = base64_encode(job.id);
-    log() << "Uploading content, length = " << len << " id = " << b64_block_id << std::endl;
+    log() << "Uploading content, length = " << len << " id = " << job.id << std::endl;
     // keep trying until success
     do {
       auto fut = client->upload_block_from_stream(loc->first, loc->second, b64_block_id, *job.stream);
@@ -143,39 +150,52 @@ void BlockAzureUploader::run()
     } while(1);
     // success, send back response
     resps.push(UploadResponse{UploadResponse::OK, job.id});
+    leaveJob();
   }
   log() << "Worker is exiting." << std::endl;
 }
 
-// add one block to block list(the next block)
+// add one block to block list
 void BlockAzureUploader::commitBlock(blockid_t id)
 {
   window.push_back(id);
   std::push_heap(window.begin(), window.end(), [](blockid_t a, blockid_t b) { return a > b; });      
-  while(completedId == window.front())
+  while(nextCommitId == window.front())
   {
     block_list.push_back(::azure::storage_lite::put_block_list_request_base::block_item{
-      base64_encode(completedId), put_block_list_request_base::block_type::latest
+      base64_encode(nextCommitId), put_block_list_request_base::block_type::latest
     });
     std::pop_heap(window.begin(), window.end(), [](blockid_t a, blockid_t b) { return a > b; });
     window.pop_back();
-    completedId += 1;
+    nextCommitId += 1;
   }
 }
 
 // upload put block list
 void BlockAzureUploader::doCommit()
 {
+  if(nextCommitId == 0 || nextCommitId == committedId + 1)
+    // nothing to do
+    return;
+  waitFlush();
+  log() << "Comitting, last block id = " << (nextCommitId - 1) << std::endl;
   // no metadata needed
   auto metadata = std::vector<std::pair<std::string, std::string>>();
   auto fut = client->put_block_list(loc->first, loc->second, block_list, metadata);
+
   auto result = fut.get();
-  handle(result);
+  handle(result, log());
   if(result.success()) {
     lastCommit = std::chrono::steady_clock::now();
-    committedId = completedId;
+    committedId = nextCommitId - 1;
     log() << "Committed, last block id = " << committedId << std::endl;
+    // update all committed block to "committed"
+    // for(auto &b: block_list)
+    // {
+    //   b.type = put_block_list_request_base::block_type::committed;
+    // }
   }
+  disableFlush();
 }
 
 // commit thread's routine
@@ -195,7 +215,7 @@ void BlockAzureUploader::runCommit()
         if(resp.code == UploadResponse::OK)
           commitBlock(resp.id);
       } while(!resps.empty());
-      if(completedId - committedId >= commit_block_count)
+      if(nextCommitId - committedId > commit_block_count)
         doCommit();
     } catch (ClosedException &e) {
       log() << "Response queue is closed." << std::endl;

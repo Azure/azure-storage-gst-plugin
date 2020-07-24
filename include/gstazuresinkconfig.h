@@ -17,8 +17,8 @@ typedef struct {
     gchar *blob_name;
     gchar *blob_endpoint;
     gboolean use_https;
-    gsize block_size;
-    gsize worker_count;
+    guint block_size;
+    guint worker_count;
     guint commit_block_count;
     guint commit_interval_ms;
 } GstAzureSinkConfig;

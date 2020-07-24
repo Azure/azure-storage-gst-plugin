@@ -10,7 +10,6 @@
 #include <atomic>
 #include <sstream>
 #include <queue>
-#include <chrono>
 #include <condition_variable>
 
 #include "azureuploadercommon.hpp"
@@ -20,12 +19,14 @@
 #include "storage_credential.h"
 #include "storage_account.h"
 #include "blob/blob_client.h"
-#include "blob/put_block_list_request.h"
+#include "blob/append_block_request.h"
 
 namespace gst {
 namespace azure {
 namespace storage {
 
+const unsigned int BLOCK_SIZE = 1048576 * 2;
+const unsigned int WORKER_COUNT = 4;
 class BlockAzureUploader {
 private:
   typedef long long unsigned blockid_t;
@@ -41,26 +42,64 @@ private:
     blockid_t id;
   };
   // configurations
-  unsigned long block_size;
-  unsigned long worker_count;
-  unsigned long commit_block_count;
-  unsigned long commit_interval_ms;
+  unsigned block_size;
+  unsigned worker_count;
+  unsigned commit_block_count;
+  unsigned commit_interval_ms;
 
   // members
   std::shared_ptr<::azure::storage_lite::blob_client> client;
   std::shared_ptr<AzureUploadLocation> loc;
   std::unique_ptr<std::stringstream> stream;
+
+  // worker and comitter
   std::vector<std::future<void>> workers;
   std::future<void> commitWorker;
+  
+  // message channels
   BlockingQueue<UploadJob> reqs;
   BlockingQueue<UploadResponse> resps;
-  blockid_t completedId;
+  blockid_t nextCommitId;
   blockid_t nextId;
   blockid_t committedId;
   std::vector<blockid_t> window;
   std::chrono::_V2::steady_clock::time_point lastCommit;
   std::vector<::azure::storage_lite::put_block_list_request_base::block_item>
     block_list;
+  
+  // flush blocker
+  std::mutex flush_lock;
+  bool flushing;
+  unsigned sem;
+  std::condition_variable flush_cond;
+  std::condition_variable complete_cond;
+  void enterJob()
+  {
+    std::lock_guard<std::mutex> guard(flush_lock);
+    sem--;
+  }
+  void leaveJob()
+  {
+    std::unique_lock<std::mutex> lk(flush_lock);
+    sem++;
+    log() << "sem = " << sem << std::endl;
+    complete_cond.notify_one();
+    flush_cond.wait(lk, [this] { return !this->flushing; });
+  }
+  // should not be called on multiple threads
+  void waitFlush()
+  {
+    std::unique_lock<std::mutex> lk(flush_lock);
+    flushing = true;
+    complete_cond.wait(lk, [this] { return this->sem == this->worker_count; });
+  }
+  // should not be called on multiple threads
+  void disableFlush()
+  {
+    std::lock_guard<std::mutex> guard(flush_lock);
+    flushing = false;
+    flush_cond.notify_all();
+  }
 
 public:
   BlockAzureUploader(
@@ -72,6 +111,8 @@ public:
   bool flush(std::shared_ptr<AzureUploadLocation> loc);
   bool destroy(std::shared_ptr<AzureUploadLocation> loc);
 private:
+  void waitCommit();
+  void doFlush();
   void commitBlock(blockid_t id);
   void doCommit();
   bool checkLoc(std::shared_ptr<AzureUploadLocation> loc);
