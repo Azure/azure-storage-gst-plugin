@@ -6,12 +6,21 @@
 #include <exception>
 #include <condition_variable>
 #include <iostream>
+#include <chrono>
 
 struct ClosedException: public std::exception
 {
   const char *what() const throw()
   {
     return "Queue closed.";
+  }
+};
+
+struct TimeoutException: public std::exception
+{
+  const char *what() const throw()
+  {
+    return "Timeout exceeded.";
   }
 };
 
@@ -47,7 +56,7 @@ public:
 
   // Pop the first element and return it atomically.
   // If the queue is empty, wait for the first element to be inserted and return it then.
-  // If the queue is closed, an exception will be thrown.
+  // If the queue is closed, a closed exception will be thrown.
   T pop()
   {
     std::unique_lock<std::mutex> lk(lock);  // locked implicitly here
@@ -55,6 +64,28 @@ public:
     cond.wait(lk, [this] { return this->closed || !this->q.empty(); });
     if(closed) {
       throw ClosedException();
+    }
+    T ret = std::move(q.front());
+    q.pop();
+    if(q.empty())
+      emp.notify_all();
+    return ret;
+  }
+
+  // Pop the first element and return it atomically.
+  // If the queue is empty, wait for the first element to be inserted and return it then.
+  // If the queue is closed, a closed exception will be thrown.
+  // A timeout duration can be specified. If the timeout exceeds and there's still no element, a timeout exception is thrown.
+  template <class Rep, class Period>
+  T pop_for(const std::chrono::duration<Rep, Period> &timeout)
+  {
+    std::unique_lock<std::mutex> lk(lock);  // locked implicitly here
+    // wait on condition variable
+    cond.wait_for(lk, timeout, [this] { return this->closed || !this->q.empty(); });
+    if(closed) {
+      throw ClosedException();
+    } else if(q.empty()) {
+      throw TimeoutException();
     }
     T ret = std::move(q.front());
     q.pop();

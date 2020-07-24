@@ -14,13 +14,18 @@ namespace gst {
 namespace azure {
 namespace storage {
 
-BlockAzureUploader::BlockAzureUploader(const char *account_name, const char *account_key, bool use_https)
+BlockAzureUploader::BlockAzureUploader(
+  const char *account_name, const char *account_key, bool use_https,
+  unsigned long block_size, unsigned long worker_count,
+  unsigned long commit_block_count, unsigned long commit_interval_ms)
+  : block_size(block_size), worker_count(worker_count),
+    commit_block_count(commit_block_count), commit_interval_ms(commit_interval_ms)
 {
   std::string name(account_name);
   std::string key(account_key);
   auto credential = std::make_shared<::azure::storage_lite::shared_key_credential>(name, key);
   auto storage_account = std::make_shared<::azure::storage_lite::storage_account>(name, credential, use_https);
-  client = std::make_shared<::azure::storage_lite::blob_client>(storage_account, WORKER_COUNT);
+  client = std::make_shared<::azure::storage_lite::blob_client>(storage_account, worker_count);
 }
 
 // Check if the location is correct.
@@ -31,6 +36,8 @@ bool BlockAzureUploader::checkLoc(std::shared_ptr<AzureUploadLocation> loc)
   return this->loc != nullptr && this->loc == loc;
 }
 
+// Initialize the uploader by specifying upload location, which cannot be
+// modified later on.
 std::shared_ptr<AzureUploadLocation> BlockAzureUploader::init(const char *container_name, const char *blob_name)
 {
   if(loc != nullptr && destroy(loc) == false)
@@ -42,28 +49,38 @@ std::shared_ptr<AzureUploadLocation> BlockAzureUploader::init(const char *contai
   auto fut = client->upload_block_blob_from_stream(loc->first, loc->second, ss, std::vector<std::pair<std::string, std::string>>());
   auto result = fut.get();
   handle(result);
-  for(unsigned i = 0; i < WORKER_COUNT; i++)
-    workers[i] = std::async(&BlockAzureUploader::run, this);
+  // generate stream object
   stream = std::make_unique<std::stringstream>();
-  window_start = blockId = 0;
+  // configure block id
+  completedId = nextId = committedId = 0;
+  // spawn all workers
+  workers = std::vector<std::future<void>>();
+  workers.reserve(worker_count);
+  for(unsigned i = 0; i < worker_count; i++)
+    workers.emplace_back(std::async(&BlockAzureUploader::run, this));
+  // spawn the comitter
   commitWorker = std::async(&BlockAzureUploader::runCommit, this);
   return loc;
 }
 
+// Receive bunch of data. Send it once it exceeds configured block size.
 bool BlockAzureUploader::upload(std::shared_ptr<AzureUploadLocation> loc, const char *data, size_t size)
 {
   if(!checkLoc(loc))
     return false;
-  // Blocks are uploaded only if buffer(1MiB by default) overflows
   stream->write(data, size);
-  if(getStreamLen(*stream) >= BLOCK_SIZE)
+  // push the stream to upload if it exceeds the block size
+  // we do not make perfect cut here, since we don't want to split single frame
+  // into different blocks
+  if(getStreamLen(*stream) >= block_size)
   {
-    reqs.push(UploadJob{blockId++, std::move(stream)});
+    reqs.push(UploadJob{nextId++, std::move(stream)});
     stream = std::make_unique<std::stringstream>();
   }
   return true;
 }
 
+// Flush remaining data, blocks until all requests are being processed.
 bool BlockAzureUploader::flush(std::shared_ptr<AzureUploadLocation> loc)
 {
   if(!checkLoc(loc))
@@ -72,7 +89,7 @@ bool BlockAzureUploader::flush(std::shared_ptr<AzureUploadLocation> loc)
   // commit remaining data
   if(getStreamLen(*stream) > 0) {
     log() << "Pushing uncommitted data..." << std::endl;
-    reqs.push(UploadJob{ blockId++, std::move(stream) });
+    reqs.push(UploadJob{ nextId++, std::move(stream) });
     stream = std::make_unique<std::stringstream>();
   }
   // wait for the request queue to become empty
@@ -80,7 +97,7 @@ bool BlockAzureUploader::flush(std::shared_ptr<AzureUploadLocation> loc)
   return true;
 }
 
-
+// Flush & commit all remaining blocks.
 bool BlockAzureUploader::destroy(std::shared_ptr<AzureUploadLocation> loc)
 {
   if(!checkLoc(loc))
@@ -97,7 +114,7 @@ bool BlockAzureUploader::destroy(std::shared_ptr<AzureUploadLocation> loc)
   return true;
 }
 
-// multithreaded worker job
+// uploader thread's routine
 void BlockAzureUploader::run()
 {
   log() << "Initialized new upload worker." << std::endl;
@@ -130,51 +147,65 @@ void BlockAzureUploader::run()
   log() << "Worker is exiting." << std::endl;
 }
 
-void BlockAzureUploader::runCommit()
+// add one block to block list(the next block)
+void BlockAzureUploader::commitBlock(blockid_t id)
 {
-  using ::azure::storage_lite::put_block_list_request_base;
-  log() << "Initializing committer." << std::endl;
-  while(1)
+  window.push_back(id);
+  std::push_heap(window.begin(), window.end(), [](blockid_t a, blockid_t b) { return a > b; });      
+  while(completedId == window.front())
   {
-    // fetch all responses already enqueued
-    try {
-      UploadResponse resp;
-      do {
-        resp = resps.pop();
-        if(resp.code == UploadResponse::OK)
-        {
-          window.push_back(resp.id);
-          std::push_heap(window.begin(), window.end(), [](blockid_t a, blockid_t b) { return a > b; });
-          log() << "Committer received response of id " << resp.id << std::endl;
-        }
-      } while(!resps.empty());
-    } catch (ClosedException &e) {
-      log() << "Response queue is closed." << std::endl;
-      break;
-    }
-    while(window_start == window.front())
-    {
-      std::pop_heap(window.begin(), window.end(), [](blockid_t a, blockid_t b) { return a > b; });
-      window.pop_back();
-      window_start += 1;
-      // log() << "Pushing window start to " << window_start << std::endl;
-    }
-  }
-  // finally do commit
-  std::vector<put_block_list_request_base::block_item> block_list;
-  for(blockid_t id = 0; id < window_start; id++)
-    block_list.push_back(put_block_list_request_base::block_item{
-      base64_encode(id),
-      put_block_list_request_base::block_type::latest
+    block_list.push_back(::azure::storage_lite::put_block_list_request_base::block_item{
+      base64_encode(completedId), put_block_list_request_base::block_type::latest
     });
+    std::pop_heap(window.begin(), window.end(), [](blockid_t a, blockid_t b) { return a > b; });
+    window.pop_back();
+    completedId += 1;
+  }
+}
+
+// upload put block list
+void BlockAzureUploader::doCommit()
+{
   // no metadata needed
   auto metadata = std::vector<std::pair<std::string, std::string>>();
   auto fut = client->put_block_list(loc->first, loc->second, block_list, metadata);
   auto result = fut.get();
   handle(result);
   if(result.success()) {
-    log() << "Committed, last block id = " << window_start << std::endl;
+    lastCommit = std::chrono::steady_clock::now();
+    committedId = completedId;
+    log() << "Committed, last block id = " << committedId << std::endl;
   }
+}
+
+// commit thread's routine
+void BlockAzureUploader::runCommit()
+{
+  log() << "Initializing committer." << std::endl;
+  lastCommit = std::chrono::steady_clock::now();
+  auto interval = static_cast<long>(commit_interval_ms) * 1ms;
+  while(1)
+  {
+    // fetch all responses already enqueued
+    try {
+      UploadResponse resp;
+      do {
+        auto timeout = lastCommit + interval - std::chrono::steady_clock::now();
+        resp = resps.pop_for(timeout);
+        if(resp.code == UploadResponse::OK)
+          commitBlock(resp.id);
+      } while(!resps.empty());
+      if(completedId - committedId >= commit_block_count)
+        doCommit();
+    } catch (ClosedException &e) {
+      log() << "Response queue is closed." << std::endl;
+      break;
+    } catch (TimeoutException &e) {
+      doCommit();
+    }
+  }
+  // do commit on exit
+  doCommit();
   log() << "Comitter is exiting." << std::endl;
 }
 
@@ -220,7 +251,8 @@ GstAzureUploader *gst_azure_sink_block_uploader_new(const GstAzureSinkConfig *co
     return NULL;
   uploader->klass = defaultClass;
   uploader->impl = (void *)(new gst::azure::storage::BlockAzureUploader(
-    config->account_name, config->account_key, (bool)config->use_https));
+    config->account_name, config->account_key, (bool)config->use_https,
+    config->block_size, config->worker_count, config->commit_block_count, config->commit_interval_ms));
   uploader->data = (void *)(new std::shared_ptr<gst::azure::storage::AzureUploadLocation>(nullptr));
   return uploader;
 }

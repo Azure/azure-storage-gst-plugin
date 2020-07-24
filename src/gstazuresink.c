@@ -38,7 +38,7 @@
 #include <gst/gst.h>
 #include <gst/base/gstbasesink.h>
 
-// #include "simpleazureuploader.h"
+#include "simpleazureuploader.h"
 #include "blockazureuploader.h"
 #include "utils/gstutils.h"
 
@@ -91,8 +91,10 @@ enum
   PROP_CONTAINER_NAME,
   PROP_BLOB_NAME,
   PROP_USE_HTTPS,
-  PROP_BUFFER_SIZE,
-  PROP_BUFFER_COUNT
+  PROP_BLOCK_SIZE,
+  PROP_WORKER_COUNT,
+  PROP_COMMIT_BLOCK_COUNT,
+  PROP_COMMIT_INTERVAL_MS,
 };
 
 /* pad templates */
@@ -178,9 +180,29 @@ gst_azure_sink_class_init (GstAzureSinkClass * klass)
   
   g_object_class_install_property (gobject_class, PROP_USE_HTTPS,
     g_param_spec_boolean("use-https", "azure storage use https",
-      "Whether to use https or not in azure storage REST API. This is highly recommended"
+      "Whether to use https or not in azure storage REST API. This is highly recommended "
       "and enabled by default, by you can turn it off for debug purporses.",
       TRUE, G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+  
+  g_object_class_install_property (gobject_class, PROP_BLOCK_SIZE,
+    g_param_spec_uint("block-size", "azure storage block size",
+      "Block size for azure storage block blob in bytes. 4MiB by default.",
+      1, 100 * 1024 * 1024, AZURE_SINK_DEFAULT_BLOCK_SIZE, G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+  
+  g_object_class_install_property (gobject_class, PROP_WORKER_COUNT,
+    g_param_spec_uint("worker-count", "azure storage worker count",
+      "The number of concurrent block uploaders. 4 by default.",
+      1, 64, AZURE_SINK_DEFAULT_WORKER_COUNT, G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+  
+  g_object_class_install_property (gobject_class, PROP_COMMIT_BLOCK_COUNT,
+    g_param_spec_uint("commit-block-count", "azure storage commit block count",
+      "The number of blocks left uncommitted when put block list(commit) is triggered. 16 by default.",
+      0, 50000, AZURE_SINK_DEFAULT_COMMIT_BLOCK_COUNT, G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+  
+  g_object_class_install_property (gobject_class, PROP_COMMIT_INTERVAL_MS,
+    g_param_spec_uint("commit-interval-ms", "azure storage commit interval",
+      "The maximum duration between two put block list(commit)s in milliseconds. 60 seconds by default, 1 day max.",
+      0, 86400000, AZURE_SINK_DEFAULT_COMMIT_INTERVAL_MS, G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
 }
 
 static void
@@ -190,8 +212,6 @@ gst_azure_sink_init (GstAzureSink *azuresink)
   azuresink->uploader = NULL;
   azuresink->total_bytes_written = 0;
   GST_DEBUG_OBJECT(azuresink, "init");
-  GST_INFO("setting gst base sink...\n");
-  // azuresink->sinkpad = gst_pad_new_from_static_template(&gst_azure_sink_sink_template, "sink");
   /* NOTE pads are configured here with gst_pad_set_*_function () */
   // gst_element_add_pad(GST_ELEMENT(azuresink), azuresink->sinkpad);
   gst_base_sink_set_sync(GST_BASE_SINK(azuresink), FALSE);
@@ -230,13 +250,21 @@ gst_azure_sink_set_property (GObject * object, guint property_id,
       gst_azure_sink_set_boolean_property(azuresink, value,
         &azuresink->config.use_https, "use-https");
       break;
-    case PROP_BUFFER_COUNT:
-      gst_azure_sink_set_uint64_property(azuresink, value,
-        &azuresink->config.buffer_count, "buffer-count");
+    case PROP_BLOCK_SIZE:
+      gst_azure_sink_set_uint_property(azuresink, value,
+        &azuresink->config.block_size, "block-size");
       break;
-    case PROP_BUFFER_SIZE:
-      gst_azure_sink_set_uint64_property(azuresink, value,
-        &azuresink->config.buffer_size, "buffer-size");
+    case PROP_WORKER_COUNT:
+      gst_azure_sink_set_uint_property(azuresink, value,
+        &azuresink->config.worker_count, "worker-count");
+      break;
+    case PROP_COMMIT_BLOCK_COUNT:
+      gst_azure_sink_set_uint_property(azuresink, value,
+        &azuresink->config.commit_block_count, "commit-block-count");
+      break;
+    case PROP_COMMIT_INTERVAL_MS:
+      gst_azure_sink_set_uint_property(azuresink, value,
+        &azuresink->config.commit_interval_ms, "commit-interval-ms");
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -272,11 +300,17 @@ gst_azure_sink_get_property (GObject * object, guint property_id,
     case PROP_USE_HTTPS:
       g_value_set_boolean(value, azuresink->config.use_https);
       break;
-    case PROP_BUFFER_COUNT:
-      g_value_set_uint64(value, azuresink->config.buffer_count);
+    case PROP_WORKER_COUNT:
+      g_value_set_uint(value, azuresink->config.worker_count);
       break;
-    case PROP_BUFFER_SIZE:
-      g_value_set_uint64(value, azuresink->config.buffer_size);
+    case PROP_BLOCK_SIZE:
+      g_value_set_uint(value, azuresink->config.block_size);
+      break;
+    case PROP_COMMIT_BLOCK_COUNT:
+      g_value_set_uint(value, azuresink->config.commit_block_count);
+      break;
+    case PROP_COMMIT_INTERVAL_MS:
+      g_value_set_uint(value, azuresink->config.commit_interval_ms);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -416,8 +450,8 @@ gst_azure_sink_start (GstBaseSink * sink)
 
   if(azuresink->uploader == NULL)
   {
-    // azuresink->uploader = gst_azure_sink_uploader_new(&azuresink->config);
-    azuresink->uploader = gst_azure_sink_block_uploader_new(&azuresink->config);
+    azuresink->uploader = gst_azure_sink_uploader_new(&azuresink->config);
+    // azuresink->uploader = gst_azure_sink_block_uploader_new(&azuresink->config);
   }
 
   gboolean init_success = gst_azure_uploader_init(azuresink->uploader, azuresink->config.container_name, azuresink->config.blob_name);
@@ -524,7 +558,6 @@ gst_azure_sink_query (GstBaseSink * sink, GstQuery * query)
       break;
     }
     default:
-    GST_INFO("default!");
       ret = GST_BASE_SINK_CLASS(gst_azure_sink_parent_class)->query(sink, query);
       break;
   }

@@ -14,7 +14,9 @@ int main(int argc, char** argv) {
   bool use_https = false;
 
   // Test our azure uploader
-  gst::azure::storage::BlockAzureUploader uploader(account_name.c_str(), account_key.c_str(), use_https);
+  gst::azure::storage::BlockAzureUploader uploader(
+    account_name.c_str(), account_key.c_str(), use_https,
+    4 * 1024 * 1024, 4, 16, 60000);
   auto loc = uploader.init("videostore", "teststream");
   // now upload a lot of contents...
   std::srand(std::time(nullptr));
