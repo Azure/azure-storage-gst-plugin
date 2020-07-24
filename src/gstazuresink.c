@@ -476,13 +476,13 @@ gst_azure_sink_stop (GstBaseSink * sink)
 
   GST_DEBUG_OBJECT (azuresink, "stop");
 
-  gboolean flush_success = gst_azure_uploader_flush(azuresink->uploader);
-  if(!flush_success)
-  {
-    GST_ELEMENT_ERROR(sink, RESOURCE, SYNC,
-    ("Failed to flush content before stopping the stream."), (NULL));
-    return FALSE;
-  }
+  // gboolean flush_success = gst_azure_uploader_flush(azuresink->uploader);
+  // if(!flush_success)
+  // {
+  //   GST_ELEMENT_ERROR(sink, RESOURCE, SYNC,
+  //   ("Failed to flush content before stopping the stream."), (NULL));
+  //   return FALSE;
+  // }
   gboolean destroy_success = gst_azure_uploader_destroy(azuresink->uploader);
   if(!destroy_success)
   {

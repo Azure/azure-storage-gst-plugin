@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <istream>
+#include <fstream>
 #include <thread>
 #include <storage_outcome.h>
 
@@ -33,9 +34,24 @@ inline unsigned int getStreamLen(std::basic_istream<CharT> &ss)
     return end - cur;
 }
 
+inline std::ostream &nullstream()
+{
+    static std::ofstream os;
+    if(!os.is_open())
+        os.open("/dev/null", std::ofstream::out | std::ofstream::app);
+    return os;
+}
+
+// #define OUTPUT_LOG
+
 inline std::ostream &log()
 {
-    return std::cerr << "[" << std::hex << std::this_thread::get_id() << "]" << std::dec;
+    #ifdef OUTPUT_LOG
+    static std::ostream &out = std::cerr;
+    #else
+    static std::ostream &out = nullstream();
+    #endif
+    return out << "[" << std::hex << std::this_thread::get_id() << "]" << std::dec;
 }
 
 #endif
