@@ -8,6 +8,7 @@
 #include "utils/base64.hpp"
 #include "utils/common.hpp"
 
+#define LOG_ENTER log() << "Entering " << __func__ << std::endl;
 
 using namespace std::chrono_literals;
 namespace gst {
@@ -80,7 +81,7 @@ bool BlockAzureUploader::upload(std::shared_ptr<AzureUploadLocation> loc, const 
   return true;
 }
 
-// Flush remaining data, blocks until all requests are being processed.
+// Flush remaining data, blocks until all requests are processed.
 bool BlockAzureUploader::flush(std::shared_ptr<AzureUploadLocation> loc)
 {
   if(!checkLoc(loc))
@@ -92,9 +93,13 @@ bool BlockAzureUploader::flush(std::shared_ptr<AzureUploadLocation> loc)
     stream = std::make_unique<std::stringstream>();
   }
   // wait for all requests to complete
+  log() << "Waiting for all to become empty" << std::endl;
   reqs.wait_empty();
+  log() << "waitflush" << std::endl;
   waitFlush();
+  log() << "disableflush" << std::endl;
   disableFlush();
+  log() << "docommit" << std::endl;
   doCommit();
   log() << "Flushed" << std::endl;
   return true;
@@ -105,12 +110,14 @@ bool BlockAzureUploader::destroy(std::shared_ptr<AzureUploadLocation> loc)
 {
   if(!checkLoc(loc))
     return false;
+  // flush first
+  flush(loc);
   log() << "Destroying..." << std::endl;
-  reqs.close();
   reqs.wait_empty();
+  reqs.close();
   log() << "Waiting for all workers to exit..." << std::endl;
   for(auto &fut: workers)
-    fut.wait();
+    if(fut.valid()) fut.wait();
   log() << "Waiting for committer to exit..." << std::endl;
   resps.close();
   if(commitWorker.valid())
@@ -178,15 +185,15 @@ void BlockAzureUploader::doCommit()
     return;
   waitFlush();
   // NOTE collect all responses again, otherwise data might be lost
-  do {
+  while(!resps.empty()) {
     auto resp = resps.pop();
     if(resp.code == UploadResponse::OK)
       commitBlock(resp.id);
-  } while(!resps.empty());
+  }
   // no metadata needed
   auto metadata = std::vector<std::pair<std::string, std::string>>();
   do {
-    log() << "Comitting, last block id = " << (nextCommitId - 1) << std::endl;
+    log() << "Committing, last block id = " << (nextCommitId - 1) << std::endl;
     auto fut = client->put_block_list(loc->first, loc->second, block_list, metadata);
     auto result = fut.get();
     handle(result, log());
