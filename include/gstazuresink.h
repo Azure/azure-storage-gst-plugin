@@ -17,8 +17,8 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef _AZURE_SINK_GST_AZURE_SINK_H_
-#define _AZURE_SINK_GST_AZURE_SINK_H_
+#ifndef _AZURE_ELEMENTS_GST_AZURE_SINK_H_
+#define _AZURE_ELEMENTS_GST_AZURE_SINK_H_
 #include <gst/base/gstbasesink.h>
 #include "gstazureuploader.h"
 #include "gstazuresinkconfig.h"

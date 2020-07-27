@@ -1,5 +1,5 @@
-#ifndef _AZURE_SINK_GST_UTILS_H_
-#define _AZURE_SINK_GST_UTILS_H_
+#ifndef _AZURE_ELEMENTS_UTILS_GST_UTILS_H_
+#define _AZURE_ELEMENTS_UTILS_GST_UTILS_H_
 
 #include <gst/gst.h>
 

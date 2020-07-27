@@ -1,5 +1,5 @@
-#ifndef _AZURE_SINK_TEST_UTILS_HPP_
-#define _AZURE_SINK_TEST_UTILS_HPP_
+#ifndef _AZURE_ELEMENTS_TEST_UTILS_HPP_
+#define _AZURE_ELEMENTS_TEST_UTILS_HPP_
 
 #include <sstream>
 #include <random>

@@ -1,5 +1,5 @@
-#ifndef _AZURE_SINK_SIMPLE_AZURE_UPLOADER_H_
-#define _AZURE_SINK_SIMPLE_AZURE_UPLOADER_H_
+#ifndef _AZURE_ELEMENTS_SIMPLE_AZURE_UPLOADER_H_
+#define _AZURE_ELEMENTS_SIMPLE_AZURE_UPLOADER_H_
 #include <gst/gst.h>
 #include "gstazureuploader.h"
 

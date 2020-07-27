@@ -34,7 +34,7 @@ BlockAzureUploader::BlockAzureUploader(
 // Check if the location is correct.
 // BlockAzureUploader only support one location at a time,
 // and cannot be modified once specified
-bool BlockAzureUploader::checkLoc(std::shared_ptr<AzureUploadLocation> loc)
+inline bool BlockAzureUploader::checkLoc(std::shared_ptr<AzureUploadLocation> loc)
 {
   return this->loc != nullptr && this->loc == loc;
 }
@@ -228,17 +228,15 @@ void BlockAzureUploader::runCommit()
       if(nextCommitId - committedId > commit_block_count)
         doCommit();
     } catch (ClosedException &e) {
-      log() << "Response queue is closed." << std::endl;
+      // log() << "Response queue is closed." << std::endl;
       break;
     } catch (TimeoutException &e) {
-      // upload current block
-
       doCommit();
     }
   }
   // do commit on exit
   doCommit();
-  log() << "Comitter is exiting." << std::endl;
+  log() << "Committer is exiting." << std::endl;
 }
 
 }

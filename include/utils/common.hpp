@@ -1,5 +1,5 @@
-#ifndef _AZURE_SINK_UTILS_HPP_
-#define _AZURE_SINK_UTILS_HPP_
+#ifndef _AZURE_ELEMENTS_UTILS_COMMON_HPP_
+#define _AZURE_ELEMENTS_UTILS_COMMON_HPP_
 
 #include <iostream>
 #include <istream>

@@ -1,5 +1,5 @@
-#ifndef _AZURE_SINK_BASE64_HPP_
-#define _AZURE_SINK_BASE64_HPP_
+#ifndef _AZURE_ELEMENTS_BASE64_HPP_
+#define _AZURE_ELEMENTS_BASE64_HPP_
 
 #include <sstream>
 
