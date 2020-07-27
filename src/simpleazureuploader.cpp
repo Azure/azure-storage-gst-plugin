@@ -6,11 +6,11 @@
 #include <iostream>
 #include <iomanip>
 
-// FIXME use a specific logger
-
 namespace gst {
 namespace azure {
 namespace storage {
+
+#define APPEND_BLOCK_MAX_BLOCK_SIZE (2*1024*1024)
 
 // individual uploader logics
 bool UploadWorker::append(UploadBuffer buffer)
@@ -50,8 +50,18 @@ void UploadWorker::run()
       lk.unlock();
     }
     stream_lock.lock();
-    auto saved_stream = std::move(stream);
-    stream = std::make_unique<std::stringstream>();
+    // get 2MiB-max trunks from stream
+    std::unique_ptr<std::stringstream> saved_stream = nullptr;
+    if(getStreamLen(*stream) <= APPEND_BLOCK_MAX_BLOCK_SIZE)
+    {
+      saved_stream = std::move(stream);
+      stream = std::make_unique<std::stringstream>();
+    } else {
+      // read from stream
+      char *buf = new char[APPEND_BLOCK_MAX_BLOCK_SIZE];
+      stream->read(buf, APPEND_BLOCK_MAX_BLOCK_SIZE);
+      saved_stream = std::make_unique<std::stringstream>(buf);
+    }
     stream_lock.unlock();
 
     // get content length for debugging

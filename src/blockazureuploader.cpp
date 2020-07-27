@@ -95,13 +95,9 @@ bool BlockAzureUploader::flush(std::shared_ptr<AzureUploadLocation> loc)
   // wait for all requests to complete
   log() << "Waiting for all to become empty" << std::endl;
   reqs.wait_empty();
-  log() << "waitflush" << std::endl;
   waitFlush();
-  log() << "disableflush" << std::endl;
   disableFlush();
-  log() << "docommit" << std::endl;
   doCommit();
-  log() << "Flushed" << std::endl;
   return true;
 }
 
@@ -235,6 +231,8 @@ void BlockAzureUploader::runCommit()
       log() << "Response queue is closed." << std::endl;
       break;
     } catch (TimeoutException &e) {
+      // upload current block
+
       doCommit();
     }
   }

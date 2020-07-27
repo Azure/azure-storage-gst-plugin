@@ -452,8 +452,8 @@ gst_azure_sink_start (GstBaseSink * sink)
 
   if(azuresink->uploader == NULL)
   {
-    // azuresink->uploader = gst_azure_sink_uploader_new(&azuresink->config);
-    azuresink->uploader = gst_azure_sink_block_uploader_new(&azuresink->config);
+    azuresink->uploader = gst_azure_sink_uploader_new(&azuresink->config);
+    // azuresink->uploader = gst_azure_sink_block_uploader_new(&azuresink->config);
   }
 
   gboolean init_success = gst_azure_uploader_init(azuresink->uploader, azuresink->config.container_name, azuresink->config.blob_name);
