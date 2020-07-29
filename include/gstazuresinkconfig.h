@@ -23,20 +23,29 @@ typedef struct {
     guint commit_interval_ms;
 } GstAzureSinkConfig;
 
-#define AZURE_SINK_DEFAULT_CONFIG (GstAzureSinkConfig) { \
-    .account_name = NULL, \
-    .account_key = NULL, \
-    .container_name = NULL, \
-    .blob_name = NULL, \
-    .blob_endpoint = NULL, \
-    .use_https = TRUE, \
-    .block_size = AZURE_SINK_DEFAULT_BLOCK_SIZE, \
-    .worker_count = AZURE_SINK_DEFAULT_WORKER_COUNT, \
-    .commit_block_count = AZURE_SINK_DEFAULT_COMMIT_BLOCK_COUNT, \
-    .commit_interval_ms = AZURE_SINK_DEFAULT_COMMIT_INTERVAL_MS \
-}
+#define AZURE_SINK_DEFAULT_CONFIG ((GstAzureSinkConfig) {\
+  .account_name = NULL,\
+  .account_key = NULL,\
+  .container_name = NULL,\
+  .blob_name = NULL,\
+  .blob_endpoint = NULL,\
+  .use_https = TRUE,\
+  .block_size = AZURE_SINK_DEFAULT_BLOCK_SIZE,\
+  .worker_count = AZURE_SINK_DEFAULT_WORKER_COUNT,\
+  .commit_block_count = AZURE_SINK_DEFAULT_COMMIT_BLOCK_COUNT,\
+  .commit_interval_ms = AZURE_SINK_DEFAULT_COMMIT_INTERVAL_MS\
+})
 
-void gst_azure_sink_release_config(GstAzureSinkConfig *config);
+static inline void gst_azure_sink_release_config(GstAzureSinkConfig *config)
+{
+  g_free(config->account_name);
+  g_free(config->account_key);
+  g_free(config->container_name);
+  g_free(config->blob_endpoint);
+  g_free(config->blob_name);
+
+  *config = AZURE_SINK_DEFAULT_CONFIG;
+}
 
 G_END_DECLS
 

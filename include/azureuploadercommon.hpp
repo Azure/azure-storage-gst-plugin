@@ -1,5 +1,5 @@
-#ifndef _AZURE_ELEMENTS_UPLOADER_COMMON_HPP_
-#define _AZURE_ELEMENTS_UPLOADER_COMMON_HPP_
+#ifndef _AZURE_SINK_UPLOADER_COMMON_HPP_
+#define _AZURE_SINK_UPLOADER_COMMON_HPP_
 
 #include <string>
 #include <utility>

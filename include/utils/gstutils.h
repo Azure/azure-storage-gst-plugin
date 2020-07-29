@@ -5,7 +5,7 @@
 
 G_BEGIN_DECLS
 
-void gst_azure_sink_set_string_property(GstAzureSink *sink, const GValue *value,
+static inline void gst_azure_elements_set_string_property(void *obj, const GValue *value,
     gchar **property, const gchar *property_name)
 {
     const gchar *v = g_value_get_string(value);
@@ -13,35 +13,28 @@ void gst_azure_sink_set_string_property(GstAzureSink *sink, const GValue *value,
 
     if(v != NULL) {
         *property = g_strdup(v);
-        GST_INFO_OBJECT(sink, "Setting property %s: %s", property_name, *property);
+        GST_INFO_OBJECT(obj, "Setting property %s: %s", property_name, *property);
     } else {
         gst_print("Resetting property %s...\n", property_name);
         *property = NULL;
     }
 }
 
-void gst_azure_sink_set_boolean_property(GstAzureSink *sink, const GValue *value,
-    gboolean *property, const gchar *property_name)
-{
-    if(value != NULL) {
-        *property = g_value_get_boolean(value);
-        GST_INFO_OBJECT(sink, "Settin property %s: %d", property_name, (int)(*property));
-    } else {
-        GST_WARNING_OBJECT(sink, "Attempting to set property %s to invalid value, skipped.", property_name);
-    }
+#define DEFINE_SET_PROPERTY(__type, __format) \
+static inline void gst_azure_elements_set_ ## __type ## _property (\
+  void *obj, const GValue *value, g ## __type *property, const gchar *property_name)\
+{\
+  if(value != NULL) {\
+    *property = g_value_get_ ## __type (value);\
+    GST_INFO_OBJECT(obj, "Setting property %s to " __format "\n", property_name, *property);\
+  } else\
+    GST_WARNING_OBJECT(obj, "Attempting to set property %s to invalid value.", property_name);\
 }
 
-void gst_azure_sink_set_uint_property(GstAzureSink *sink, const GValue *value,
-    guint *property, const gchar *property_name)
-{
-    if(value != NULL) {
-        *property = g_value_get_uint(value);
-        GST_INFO_OBJECT(sink, "Setting property %s: %u", property_name, *property);
-    } else {
-        GST_WARNING_OBJECT(sink, "Attempted to set property %s to invalid value, skipped.", property_name);
-    }
-}
-
+DEFINE_SET_PROPERTY(boolean, "%d")
+DEFINE_SET_PROPERTY(uint64, "%lu")
+DEFINE_SET_PROPERTY(int64, "%ld")
+DEFINE_SET_PROPERTY(uint, "%u")
 
 // some handy functions
 #define GSTR_IS_EMPTY(_gstr) ((_gstr) == NULL || *(_gstr) == '\0')

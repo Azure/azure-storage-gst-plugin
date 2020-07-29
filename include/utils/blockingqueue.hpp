@@ -36,7 +36,7 @@ class BlockingQueue
 
 public:
   BlockingQueue(): q(), lock(), cond(), closed(false) {}
-  // front & back is not allowed here, since we're proposing a thread-safe container
+  // front & back are not allowed here, since we're proposing a thread-safe container
   void push(const T& value)
   {
     std::lock_guard<std::mutex> guard(lock);
@@ -59,7 +59,7 @@ public:
   // If the queue is closed, a closed exception will be thrown.
   T pop()
   {
-    std::unique_lock<std::mutex> lk(lock);  // locked implicitly here
+    std::unique_lock<std::mutex> lk(lock);
     // wait on condition variable
     cond.wait(lk, [this] { return this->closed || !this->q.empty(); });
     if(closed) {
@@ -73,9 +73,8 @@ public:
   }
 
   // Pop the first element and return it atomically.
-  // If the queue is empty, wait for the first element to be inserted and return it then.
-  // If the queue is closed, a closed exception will be thrown.
-  // A timeout duration can be specified. If the timeout exceeds and there's still no element, a timeout exception is thrown.
+  // Other than the functionalities of pop, a timeout duration can be specified.
+  // If the timeout exceeds and there's still no element, a timeout exception is thrown.
   template <class Rep, class Period>
   T pop_for(const std::chrono::duration<Rep, Period> &timeout)
   {

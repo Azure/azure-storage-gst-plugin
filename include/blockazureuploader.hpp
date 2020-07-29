@@ -5,14 +5,11 @@
 #include <utility>
 #include <memory>
 #include <thread>
-#include <array>
 #include <mutex>
-#include <atomic>
 #include <sstream>
-#include <queue>
 #include <condition_variable>
 
-#include "azureuploadercommon.hpp"
+#include "azurecommon.hpp"
 #include "utils/common.hpp"
 #include "utils/blockingqueue.hpp"
 
@@ -35,10 +32,7 @@ private:
     std::unique_ptr<std::stringstream> stream;
   };
   struct UploadResponse {
-    enum {
-      OK,
-      FAIL
-    } code;
+    enum { OK, FAIL } code;
     blockid_t id;
   };
   // configurations
@@ -49,7 +43,7 @@ private:
 
   // members
   std::shared_ptr<::azure::storage_lite::blob_client> client;
-  std::shared_ptr<AzureUploadLocation> loc;
+  std::shared_ptr<AzureLocation> loc;
   std::unique_ptr<std::stringstream> stream;
 
   // worker and comitter
@@ -106,16 +100,16 @@ public:
     const char *account_name, const char *account_key, bool use_https,
     unsigned long block_size, unsigned long worker_count,
     unsigned long commit_block_count, unsigned long commit_interval_ms);
-  std::shared_ptr<AzureUploadLocation> init(const char *container_name, const char *blob_name);
-  bool upload(std::shared_ptr<AzureUploadLocation> loc, const char *data, size_t size);
-  bool flush(std::shared_ptr<AzureUploadLocation> loc);
-  bool destroy(std::shared_ptr<AzureUploadLocation> loc);
+  std::shared_ptr<AzureLocation> init(const char *container_name, const char *blob_name);
+  bool upload(std::shared_ptr<AzureLocation> loc, const char *data, size_t size);
+  bool flush(std::shared_ptr<AzureLocation> loc);
+  bool destroy(std::shared_ptr<AzureLocation> loc);
 private:
   void waitCommit();
   void doFlush();
   void commitBlock(blockid_t id);
   void doCommit();
-  bool checkLoc(std::shared_ptr<AzureUploadLocation> loc);
+  bool checkLoc(std::shared_ptr<AzureLocation> loc);
   void run();
   void runCommit();
 };

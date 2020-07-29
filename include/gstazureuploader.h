@@ -16,18 +16,33 @@ typedef struct {
   gboolean (*destroy) (GstAzureUploader *);
 } GstAzureUploaderClass;
 
-// and their default implementations
-gboolean gst_azure_uploader_destroy(GstAzureUploader *uploader);
-gboolean gst_azure_uploader_upload(GstAzureUploader *uploader, const gchar *data, const gsize size);
-gboolean gst_azure_uploader_flush(GstAzureUploader *uploader);
-gboolean gst_azure_uploader_init(GstAzureUploader *uploader, const gchar *container_name, const gchar *blob_name);
-
 struct _GstAzureUploader {
-  GstAzureUploaderClass *klass;
+  const GstAzureUploaderClass* klass;
   // maybe a more elegant solution?
-  void *impl;
-  void *data;
+  void* impl;
+  void* data;
 };
+
+// and their default implementations
+static inline gboolean gst_azure_uploader_init(GstAzureUploader* uploader, const gchar* container_name, const gchar* blob_name)
+{
+  return uploader->klass->init(uploader, container_name, blob_name);
+}
+
+static inline gboolean gst_azure_uploader_upload(GstAzureUploader* uploader, const gchar* data, const gsize size)
+{
+  return uploader->klass->upload(uploader, data, size);
+}
+
+static inline gboolean gst_azure_uploader_flush(GstAzureUploader* uploader)
+{
+  return uploader->klass->flush(uploader);
+}
+
+static inline gboolean gst_azure_uploader_destroy(GstAzureUploader* uploader)
+{
+  return uploader->klass->destroy(uploader);
+}
 
 G_END_DECLS
 #endif

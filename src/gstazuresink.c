@@ -224,16 +224,12 @@ gst_azure_sink_set_property (GObject * object, guint property_id,
   GST_DEBUG_OBJECT (azuresink, "set_property");
 
   switch (property_id) {
-    case PROP_BLOB_ENDPOINT:
-      gst_azure_sink_set_string_property(azuresink, value,
-        &azuresink->config.blob_endpoint, "blob-endpoint");
-      break;
     case PROP_ACCOUNT_NAME:
-      gst_azure_sink_set_string_property(azuresink, value,
+      gst_azure_elements_set_string_property(azuresink, value,
         &azuresink->config.account_name, "account-name");
       break;
     case PROP_ACCOUNT_KEY:
-      gst_azure_sink_set_string_property(azuresink, value,
+      gst_azure_elements_set_string_property(azuresink, value,
         &azuresink->config.account_key, "account_key");
       break;
     case PROP_LOCATION:
@@ -252,24 +248,28 @@ gst_azure_sink_set_property (GObject * object, guint property_id,
       }
       break;
     }
+    case PROP_BLOB_ENDPOINT:
+      gst_azure_elements_set_string_property(azuresink, value,
+      &azuresink->config.blob_endpoint, "blob-endpoint");
+      break;
     case PROP_USE_HTTPS:
-      gst_azure_sink_set_boolean_property(azuresink, value,
+      gst_azure_elements_set_boolean_property(azuresink, value,
         &azuresink->config.use_https, "use-https");
       break;
     case PROP_BLOCK_SIZE:
-      gst_azure_sink_set_uint_property(azuresink, value,
+      gst_azure_elements_set_uint_property(azuresink, value,
         &azuresink->config.block_size, "block-size");
       break;
     case PROP_WORKER_COUNT:
-      gst_azure_sink_set_uint_property(azuresink, value,
+      gst_azure_elements_set_uint_property(azuresink, value,
         &azuresink->config.worker_count, "worker-count");
       break;
     case PROP_COMMIT_BLOCK_COUNT:
-      gst_azure_sink_set_uint_property(azuresink, value,
+      gst_azure_elements_set_uint_property(azuresink, value,
         &azuresink->config.commit_block_count, "commit-block-count");
       break;
     case PROP_COMMIT_INTERVAL_MS:
-      gst_azure_sink_set_uint_property(azuresink, value,
+      gst_azure_elements_set_uint_property(azuresink, value,
         &azuresink->config.commit_interval_ms, "commit-interval-ms");
       break;
     default:
@@ -361,13 +361,6 @@ gst_azure_sink_start (GstBaseSink * sink)
 
   GST_DEBUG_OBJECT (azuresink, "start");
   
-  // examine configuration
-  // if(azuresink->config == NULL)
-  // {
-  //   GST_ELEMENT_ERROR(sink, RESOURCE, NO_CONFIG,
-  //     ("Missing configuration."), (NULL));
-  //   return FALSE;
-  // }
   if(GSTR_IS_EMPTY(azuresink->config.account_key) ||
   GSTR_IS_EMPTY(azuresink->config.account_name))
   {
@@ -379,7 +372,7 @@ gst_azure_sink_start (GstBaseSink * sink)
     GSTR_IS_EMPTY(azuresink->config.blob_name))
   {
     GST_ELEMENT_ERROR(sink, RESOURCE, NOT_FOUND,
-      ("Missing contianer name or blob name, cannot determine destination."), (NULL));
+      ("Missing contner name or blob name, cannot determine destination."), (NULL));
     return FALSE;
   }
 

@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <gst/gst.h>
 
+
 #include "utils/base64.hpp"
 #include "utils/common.hpp"
 
@@ -34,18 +35,18 @@ BlockAzureUploader::BlockAzureUploader(
 // Check if the location is correct.
 // BlockAzureUploader only support one location at a time,
 // and cannot be modified once specified
-inline bool BlockAzureUploader::checkLoc(std::shared_ptr<AzureUploadLocation> loc)
+inline bool BlockAzureUploader::checkLoc(std::shared_ptr<AzureLocation> loc)
 {
   return this->loc != nullptr && this->loc == loc;
 }
 
 // Initialize the uploader by specifying upload location, which cannot be
 // modified later on.
-std::shared_ptr<AzureUploadLocation> BlockAzureUploader::init(const char *container_name, const char *blob_name)
+std::shared_ptr<AzureLocation> BlockAzureUploader::init(const char *container_name, const char *blob_name)
 {
   if(loc != nullptr && destroy(loc) == false)
     log() << "Warning: failed to destroy previous workers." << std::endl;
-  loc = std::make_shared<AzureUploadLocation>(std::string(container_name), std::string(blob_name));
+  loc = std::make_shared<AzureLocation>(std::string(container_name), std::string(blob_name));
   auto ss = std::stringstream();
   // generate stream object
   stream = std::make_unique<std::stringstream>();
@@ -65,7 +66,7 @@ std::shared_ptr<AzureUploadLocation> BlockAzureUploader::init(const char *contai
 }
 
 // Receive bunch of data. Send it once it exceeds configured block size.
-bool BlockAzureUploader::upload(std::shared_ptr<AzureUploadLocation> loc, const char *data, size_t size)
+bool BlockAzureUploader::upload(std::shared_ptr<AzureLocation> loc, const char *data, size_t size)
 {
   if(!checkLoc(loc))
     return false;
@@ -82,7 +83,7 @@ bool BlockAzureUploader::upload(std::shared_ptr<AzureUploadLocation> loc, const 
 }
 
 // Flush remaining data, blocks until all requests are processed.
-bool BlockAzureUploader::flush(std::shared_ptr<AzureUploadLocation> loc)
+bool BlockAzureUploader::flush(std::shared_ptr<AzureLocation> loc)
 {
   if(!checkLoc(loc))
     return false;
@@ -95,14 +96,14 @@ bool BlockAzureUploader::flush(std::shared_ptr<AzureUploadLocation> loc)
   // wait for all requests to complete
   log() << "Waiting for all to become empty" << std::endl;
   reqs.wait_empty();
-  waitFlush();
-  disableFlush();
+  // waitFlush();
+  // disableFlush();
   doCommit();
   return true;
 }
 
 // Flush & commit all remaining blocks.
-bool BlockAzureUploader::destroy(std::shared_ptr<AzureUploadLocation> loc)
+bool BlockAzureUploader::destroy(std::shared_ptr<AzureLocation> loc)
 {
   if(!checkLoc(loc))
     return false;
@@ -248,9 +249,9 @@ static inline gst::azure::storage::BlockAzureUploader *block_uploader(GstAzureUp
   return static_cast<gst::azure::storage::BlockAzureUploader *>(uploader->impl);
 }
 
-static inline std::shared_ptr<gst::azure::storage::AzureUploadLocation> &location(GstAzureUploader *uploader)
+static inline std::shared_ptr<gst::azure::storage::AzureLocation> &location(GstAzureUploader *uploader)
 {
-  return *(static_cast<std::shared_ptr<gst::azure::storage::AzureUploadLocation> *>(uploader->data));
+  return *(static_cast<std::shared_ptr<gst::azure::storage::AzureLocation> *>(uploader->data));
 }
 
 // c interfaces
@@ -283,7 +284,7 @@ GstAzureUploader *gst_azure_sink_block_uploader_new(const GstAzureSinkConfig *co
   uploader->impl = (void *)(new gst::azure::storage::BlockAzureUploader(
     config->account_name, config->account_key, (bool)config->use_https,
     config->block_size, config->worker_count, config->commit_block_count, config->commit_interval_ms));
-  uploader->data = (void *)(new std::shared_ptr<gst::azure::storage::AzureUploadLocation>(nullptr));
+  uploader->data = (void *)(new std::shared_ptr<gst::azure::storage::AzureLocation>(nullptr));
   return uploader;
 }
 

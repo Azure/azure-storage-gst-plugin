@@ -8,7 +8,7 @@
 #include <mutex>
 #include <condition_variable>
 #include "utils/common.hpp"
-#include "azureuploadercommon.hpp"
+#include "azurecommon.hpp"
 
 #include "storage_credential.h"
 #include "storage_account.h"
@@ -20,7 +20,7 @@ namespace azure {
 namespace storage {
 
 class UploadWorker {
-  std::shared_ptr<AzureUploadLocation> loc;
+  std::shared_ptr<AzureLocation> loc;
   std::mutex stream_lock, finish_lock;
   std::condition_variable new_cond, finish_cond;
   std::unique_ptr<std::stringstream> stream;
@@ -29,7 +29,7 @@ class UploadWorker {
   std::shared_ptr<::azure::storage_lite::blob_client> client;
   std::thread worker;
 public:
-  UploadWorker(std::shared_ptr<AzureUploadLocation> loc,
+  UploadWorker(std::shared_ptr<AzureLocation> loc,
     std::shared_ptr<::azure::storage_lite::blob_client> client):
     loc(loc), stream(std::move(std::make_unique<std::stringstream>())), finished(true), stopped(false),
     client(client), worker([this] { this->run(); }) {}
@@ -44,13 +44,13 @@ const int AZURE_CLIENT_CONCCURRENCY = 8;
 class SimpleAzureUploader {
 private:
   std::shared_ptr<::azure::storage_lite::blob_client> client;
-  std::map<std::shared_ptr<AzureUploadLocation>, std::unique_ptr<UploadWorker>> uploads;
+  std::map<std::shared_ptr<AzureLocation>, std::unique_ptr<UploadWorker>> uploads;
 public:
   SimpleAzureUploader(const char *account_name, const char *account_key, bool use_https);
-  std::shared_ptr<AzureUploadLocation> init(const char *container_name, const char *blob_name);
-  bool upload(std::shared_ptr<AzureUploadLocation> loc, const char *data, size_t size);
-  bool flush(std::shared_ptr<AzureUploadLocation> loc);
-  bool destroy(std::shared_ptr<AzureUploadLocation> loc);
+  std::shared_ptr<AzureLocation> init(const char *container_name, const char *blob_name);
+  bool upload(std::shared_ptr<AzureLocation> loc, const char *data, size_t size);
+  bool flush(std::shared_ptr<AzureLocation> loc);
+  bool destroy(std::shared_ptr<AzureLocation> loc);
 };
 
 }

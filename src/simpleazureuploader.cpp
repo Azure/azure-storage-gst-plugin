@@ -109,10 +109,10 @@ SimpleAzureUploader::SimpleAzureUploader(const char *account_name, const char *a
 }
 
 // create a new stream.
-std::shared_ptr<AzureUploadLocation>
+std::shared_ptr<AzureLocation>
 SimpleAzureUploader::init(const char *container_name, const char *blob_name)
 {
-  auto ret = std::make_shared<AzureUploadLocation>(std::string(container_name), std::string(blob_name));
+  auto ret = std::make_shared<AzureLocation>(std::string(container_name), std::string(blob_name));
   // build a new upload worker in place
   auto worker = std::make_unique<UploadWorker>(ret, this->client);
   this->uploads.emplace(ret, move(worker));
@@ -121,7 +121,7 @@ SimpleAzureUploader::init(const char *container_name, const char *blob_name)
 
 // append block of data. Push data to queue and return immediately.
 bool
-SimpleAzureUploader::upload(std::shared_ptr<AzureUploadLocation> loc, const char *data, size_t size)
+SimpleAzureUploader::upload(std::shared_ptr<AzureLocation> loc, const char *data, size_t size)
 {
   if(!size) {
     return true;
@@ -137,7 +137,7 @@ SimpleAzureUploader::upload(std::shared_ptr<AzureUploadLocation> loc, const char
 }
 
 bool
-SimpleAzureUploader::flush(std::shared_ptr<AzureUploadLocation> loc)
+SimpleAzureUploader::flush(std::shared_ptr<AzureLocation> loc)
 {
   auto worker_iter = uploads.find(loc);
   // wait for specific location to flush
@@ -151,7 +151,7 @@ SimpleAzureUploader::flush(std::shared_ptr<AzureUploadLocation> loc)
 }
 
 bool
-SimpleAzureUploader::destroy(std::shared_ptr<AzureUploadLocation> loc)
+SimpleAzureUploader::destroy(std::shared_ptr<AzureLocation> loc)
 {
   // wait for specific location to flush
   auto worker_iter = uploads.find(loc);
@@ -177,9 +177,9 @@ static inline gst::azure::storage::SimpleAzureUploader *simple_uploader(GstAzure
   return static_cast<gst::azure::storage::SimpleAzureUploader *>(uploader->impl);
 }
 
-static inline std::shared_ptr<gst::azure::storage::AzureUploadLocation> &location(GstAzureUploader *uploader)
+static inline std::shared_ptr<gst::azure::storage::AzureLocation> &location(GstAzureUploader *uploader)
 {
-  return *(static_cast<std::shared_ptr<gst::azure::storage::AzureUploadLocation> *>(uploader->data));
+  return *(static_cast<std::shared_ptr<gst::azure::storage::AzureLocation> *>(uploader->data));
 }
 
 // c interfaces
@@ -211,7 +211,7 @@ GstAzureUploader *gst_azure_sink_uploader_new(const GstAzureSinkConfig *config) 
   uploader->klass = defaultClass;
   uploader->impl = (void *)(new gst::azure::storage::SimpleAzureUploader(
     config->account_name, config->account_key, (bool)config->use_https));
-  uploader->data = (void *)(new std::shared_ptr<gst::azure::storage::AzureUploadLocation>(nullptr));
+  uploader->data = (void *)(new std::shared_ptr<gst::azure::storage::AzureLocation>(nullptr));
   return uploader;
 }
 

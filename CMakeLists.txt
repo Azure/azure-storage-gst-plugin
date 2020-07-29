@@ -6,8 +6,8 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 add_compile_options(-Wall)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fpic -g")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpic -g")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fpic")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpic")
 
 # set debug build type
 set(CMAKE_BUILD_TYPE Debug)
@@ -15,13 +15,17 @@ set(CMAKE_BUILD_TYPE Debug)
 # include(CTest)
 # enable_testing()
 
-# use PkgConfig to configure gstreamer & azure storage cpp sdk
+# use PkgConfig to configure gstreamer dependencies &
+# azure storage cpplite dependency
 find_package(PkgConfig)
 # use pkg-config to get Gstreamer
 pkg_check_modules(GSTREAMER REQUIRED gstreamer-1.0)
 pkg_check_modules(GSTREAMER_BASE REQUIRED gstreamer-base-1.0)
 pkg_check_modules(LIBCURL REQUIRED libcurl)
 pkg_check_modules(OPENSSL REQUIRED openssl)
+
+# find boost
+find_package(Boost REQUIRED)
 
 # include header files
 include_directories(
@@ -30,8 +34,9 @@ include_directories(
     ${GSTREAMER_BASE_INCLUDE_DIRS}
     ${LIBCURL_INCLUDE_DIRS}
     ${OPENSSL_INCLUDE_DIRS}
+    ${BOOST_INCLUDEDIR}
 )
-include_directories( ${PROJECT_SOURCE_DIR}/include)
+include_directories(${PROJECT_SOURCE_DIR}/include)
 
 #include link directories
 link_libraries(
@@ -41,6 +46,7 @@ link_libraries(
     /usr/local/lib/libazure-storage-lite.so
     ${OPENSSL_LIBRARIES}
     ${LIBCURL_LIBRARIES}
+    ${BOOST_LIBRARIES}
     pthread
 )
 

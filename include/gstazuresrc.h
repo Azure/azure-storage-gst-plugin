@@ -17,8 +17,8 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef _AZURE_ELEMENTS_GST_AZURESRC_H_
-#define _AZURE_ELEMENTS_GST_AZURESRC_H_
+#ifndef _AZURE_ELEMENTS_GST_AZURE_SRC_H_
+#define _AZURE_ELEMENTS_GST_AZURE_SRC_H_
 
 #include <gst/base/gstbasesrc.h>
 #include "gstazuredownloader.h"
@@ -26,7 +26,7 @@
 
 G_BEGIN_DECLS
 
-#define GST_TYPE_AZURE_SRC   (gst_azuresrc_get_type())
+#define GST_TYPE_AZURE_SRC   (gst_azure_src_get_type())
 #define GST_AZURE_SRC(obj)   (G_TYPE_CHECK_INSTANCE_CAST((obj),GST_TYPE_AZURE_SRC,GstAzureSrc))
 #define GST_AZURE_SRC_CLASS(klass)   (G_TYPE_CHECK_CLASS_CAST((klass),GST_TYPE_AZURE_SRC,GstAzureSrcClass))
 #define GST_IS_AZURE_SRC(obj)   (G_TYPE_CHECK_INSTANCE_TYPE((obj),GST_TYPE_AZURE_SRC))
@@ -49,7 +49,7 @@ struct _GstAzureSrcClass
   GstBaseSrcClass base_azuresrc_class;
 };
 
-GType gst_azuresrc_get_type (void);
+GType gst_azure_src_get_type (void);
 
 G_END_DECLS
 
