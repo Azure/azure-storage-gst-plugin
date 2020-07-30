@@ -15,7 +15,7 @@ static inline void gst_azure_elements_set_string_property(void *obj, const GValu
         *property = g_strdup(v);
         GST_INFO_OBJECT(obj, "Setting property %s: %s", property_name, *property);
     } else {
-        gst_print("Resetting property %s...\n", property_name);
+        GST_WARNING_OBJECT(obj, "Resetting property %s...\n", property_name);
         *property = NULL;
     }
 }

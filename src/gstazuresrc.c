@@ -51,7 +51,6 @@ static void gst_azure_src_set_property (GObject * object,
     guint property_id, const GValue * value, GParamSpec * pspec);
 static void gst_azure_src_get_property (GObject * object,
     guint property_id, GValue * value, GParamSpec * pspec);
-static void gst_azure_src_dispose (GObject * object);
 static void gst_azure_src_finalize (GObject * object);
 
 static gboolean gst_azure_src_start(GstBaseSrc * basesrc);
@@ -105,7 +104,6 @@ gst_azure_src_class_init (GstAzureSrcClass * klass)
   
   gobject_class->set_property = gst_azure_src_set_property;
   gobject_class->get_property = gst_azure_src_get_property;
-  gobject_class->dispose = gst_azure_src_dispose;
   gobject_class->finalize = gst_azure_src_finalize;
 
   g_object_class_install_property(gobject_class, PROP_ACCOUNT_NAME,
@@ -137,17 +135,17 @@ gst_azure_src_class_init (GstAzureSrcClass * klass)
 
   g_object_class_install_property(gobject_class, PROP_WORKER_COUNT,
     g_param_spec_uint("worker-count", "azure storage worker count",
-      "The number of concurrent block downloaders. 1 by default.",
+      "The number of concurrent block downloaders. 4 by default.",
       1, 64, AZURE_SRC_DEFAULT_WORKER_COUNT, G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
  
   g_object_class_install_property(gobject_class, PROP_BLOCK_SIZE,
     g_param_spec_uint("block-size", "azure storage block size",
-      "The size of one block, which is the mininal download unit. 4MiB by default.",
+      "The size of one block, which is the mininal download unit. 1MiB by default.",
       1, 64 * 1024 * 1024, AZURE_SRC_DEFAULT_BLOCK_SIZE, G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property(gobject_class, PROP_PREFETCH_BLOCK_COUNT,
     g_param_spec_uint("prefetch-block-count", "azure storage downloader prefetch block count",
-      "The amount of data prefetched by downloader ahead of time. One block by default.",
+      "The amount of data prefetched by downloader ahead of time. 4 blocks(the default worker number) by default.",
       1, 64, AZURE_SRC_DEFAULT_PREFETCH_BLOCK_COUNT, G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
 
 
@@ -269,25 +267,17 @@ gst_azure_src_get_property (GObject * object, guint property_id,
 }
 
 void
-gst_azure_src_dispose (GObject * object)
-{
-  GstAzureSrc *azuresrc = GST_AZURE_SRC (object);
-
-  GST_DEBUG_OBJECT (azuresrc, "dispose");
-  // free up configuration and downloader
-  gst_azure_src_release_config(&azuresrc->config);
-  gst_azure_downloader_destroy(azuresrc->downloader);
-  azuresrc->downloader = NULL;
-
-  G_OBJECT_CLASS (gst_azure_src_parent_class)->dispose (object);
-}
-
-void
 gst_azure_src_finalize (GObject *object)
 {
   GstAzureSrc *azuresrc = GST_AZURE_SRC (object);
 
   GST_DEBUG_OBJECT (azuresrc, "finalize");
+  // free up configuration and downloader
+  gst_azure_src_release_config(&azuresrc->config);
+  if(azuresrc->downloader != NULL)
+
+    gst_azure_downloader_destroy(azuresrc->downloader);
+  azuresrc->downloader = NULL;
 
   G_OBJECT_CLASS (gst_azure_src_parent_class)->finalize (object);
 }
@@ -316,9 +306,11 @@ gst_azure_src_start (GstBaseSrc* basesrc)
   {
     azuresrc->downloader = gst_azure_src_downloader_new(&azuresrc->config);
     if (azuresrc->downloader == NULL)
+    {
       GST_ELEMENT_ERROR(azuresrc, RESOURCE, FAILED,
         ("Failed to create new downloader."), (NULL));
-    return FALSE;
+      return FALSE;
+    }
   }
   if (gst_azure_downloader_init(azuresrc->downloader,
     azuresrc->config.container_name, azuresrc->config.blob_name) == FALSE)
@@ -362,7 +354,7 @@ gst_azure_src_fill(GstBaseSrc* src, guint64 offset,
   GstAzureSrc* azure_src = GST_AZURE_SRC(src);
   if (azure_src->downloader == NULL)
     return FALSE;
-  if (G_UNLIKELY(offset != -1 || offset != azure_src->read_position))
+  if (G_UNLIKELY(offset != -1 && offset != azure_src->read_position))
   {
     // seek
     if (!gst_azure_downloader_seek(azure_src->downloader, offset))
@@ -384,6 +376,7 @@ gst_azure_src_fill(GstBaseSrc* src, guint64 offset,
     gsize ret = gst_azure_downloader_read(azure_src->downloader, (char *)info.data + bytes_read, length - bytes_read);
     bytes_read += ret;
     azure_src->read_position += ret;
+    // gst_println("Read position = %ld\n", azure_src->read_position);
     if (G_UNLIKELY(ret == 0))
     {
       // eos

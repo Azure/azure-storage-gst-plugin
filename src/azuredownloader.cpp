@@ -71,7 +71,7 @@ size_t AzureDownloader::read(char* buffer, size_t size)
     comp_cond.wait(lk, [=] { return !this->window.empty() && this->window.front().req.offset <= this->read_cursor;  });
     ReadResponse &resp = window.front();
     size_t new_read_cursor = std::min(target, resp.req.offset + resp.req.buf_size);
-    log() << "Read directly " << (new_read_cursor - read_cursor) / 1024 << "KiB." << std::endl;
+    // log() << "Read directly " << (new_read_cursor - read_cursor) / 1024 << "KiB." << std::endl;
     memcpy(buffer, resp.buf + read_cursor - resp.req.offset, new_read_cursor - read_cursor);
     buffer += new_read_cursor - read_cursor;
     if (new_read_cursor == resp.req.offset + resp.req.buf_size)
@@ -89,6 +89,7 @@ size_t AzureDownloader::read(char* buffer, size_t size)
 bool AzureDownloader::seek(size_t offset)
 {
   // clear window
+  log() << "Seeking to " << offset << std::endl;
   std::unique_lock<std::mutex> lk(comp_lock);
   read_cursor = write_cursor = offset;
   window.clear();
@@ -157,7 +158,6 @@ static inline std::shared_ptr<gst::azure::storage::AzureLocation>& location(GstA
 
 // c interfaces
 G_BEGIN_DECLS
-
 
 gboolean downloader_init(GstAzureDownloader *downloader, const gchar *container_name, const gchar *blob_name);
 gsize downloader_read(GstAzureDownloader *downloader, gchar *buffer, gsize size);
