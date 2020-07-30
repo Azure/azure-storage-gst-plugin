@@ -3,6 +3,7 @@
 #include "gstazuredownloader.h"
 
 #include <string>
+#include <cassert>
 #include <gst/gst.h>
 
 #include "utils/common.hpp"
@@ -15,15 +16,13 @@ using namespace ::azure::storage_lite;
 
 AzureDownloader::AzureDownloader(
   const std::string &account_name, const std::string &account_key,
-  bool use_https, size_t worker_count, size_t block_size, size_t prefetch_size)
-  :loc(nullptr), worker_count(worker_count), block_size(block_size), prefetch_size(prefetch_size)
+  bool use_https, size_t worker_count, size_t block_size, size_t prefetch_block_count)
+  :loc(nullptr), worker_count(worker_count), block_size(block_size), prefetch_block_count(prefetch_block_count)
 {
   auto credential = std::make_shared<shared_key_credential>(account_name, account_key);
   auto account = std::make_shared<storage_account>(account_name, credential, use_https);
   client = std::make_shared<blob_client>(account, worker_count);
-  window_start = 0;
-  prefetch_cursor = 0;
-  prefetch_buffer = new char[prefetch_size];
+  read_cursor = write_cursor = 0;
 }
 
 std::shared_ptr<AzureLocation>
@@ -48,26 +47,41 @@ AzureDownloader::init(const std::string &container_name, const std::string &blob
   return loc;
 }
 
+// this function is NOT re-entrant
 size_t AzureDownloader::read(char* buffer, size_t size)
 {
+  std::lock_guard<std::mutex> guard(read_lock);
   if (loc == nullptr)
     return 0;
-  size_t off = 0;
-  // concat to blob end
-  size = std::max(blob_size - next_cursor, size);
-  // split it according to block size
-  do {
-    size_t cur = std::min(size - off, block_size);
-    reqs.push(ReadBlock{ next_cursor, cur, buffer + off });
-    off += cur;
-    next_cursor += cur;
-  } while (off < size);
-  // prefetch
-  size_t prefetch_size = std::max(blob_size - next_cursor, prefetch_size);
-
-  // wait for buffer filling to complete
+  
   std::unique_lock<std::mutex> lk(comp_lock);
-  comp_cond.wait(lk, [=]() { return this->window_start >= this->next_cursor; });
+
+  // push jobs first, including prefetch blocks
+  size_t target = read_cursor + size;
+  size_t req_target = std::min(blob_size, target + prefetch_block_count * block_size);
+  while (write_cursor < req_target)
+  {
+    size_t blk_size = std::min(block_size, blob_size - write_cursor);
+    reqs.push(ReadRequest{ write_cursor, blk_size });
+    write_cursor += blk_size;
+  }
+
+  while (read_cursor < target)
+  {
+    comp_cond.wait(lk, [=] { return !this->window.empty() && this->window.front().req.offset <= this->read_cursor;  });
+    ReadResponse &resp = window.front();
+    size_t new_read_cursor = std::min(target, resp.req.offset + resp.req.buf_size);
+    log() << "Read directly " << (new_read_cursor - read_cursor) / 1024 << "KiB." << std::endl;
+    memcpy(buffer, resp.buf + read_cursor - resp.req.offset, new_read_cursor - read_cursor);
+    buffer += new_read_cursor - read_cursor;
+    if (new_read_cursor == resp.req.offset + resp.req.buf_size)
+    {
+      delete[] resp.buf;
+      std::pop_heap(window.begin(), window.end(), std::greater<ReadResponse>());
+      window.pop_back();
+    }
+    read_cursor = new_read_cursor;
+  }
   return size;
 }
 
@@ -76,7 +90,7 @@ bool AzureDownloader::seek(size_t offset)
 {
   // clear window
   std::unique_lock<std::mutex> lk(comp_lock);
-  window_start = next_cursor = offset;
+  read_cursor = write_cursor = offset;
   window.clear();
   return true;
 }
@@ -87,49 +101,40 @@ bool AzureDownloader::destroy()
   reqs.close();
   for (auto& fut : workers)
     fut.wait();
-}
-
-void AzureDownloader::push_window(const ReadBlock blk)
-{
-  const auto cmp = [](ReadBlock& a, ReadBlock& b) { return a.offset > b.offset; };
-  // update read window
-  std::unique_lock<std::mutex> lk(comp_lock);
-  window.push_back(blk);
-  std::push_heap(window.begin(), window.end(), cmp);
-  // it is possible that window front is less than window_start
-  // if a seek operation is performed and previous download jobs are not completed.
-  while (window_start <= window.front().offset)
-  {
-    std::pop_heap(window.begin(), window.end(), cmp);
-    window_start = std::max(window_start, window.back().offset + window.back().size);
-    window.pop_back();
-    comp_cond.notify_all();
-  }
+  return true;
 }
 
 void AzureDownloader::run()
 {
   while (1)
   {
-    ReadBlock req;
+    ReadRequest req;
     try {
       req = reqs.pop();
-    } catch (ClosedException e) {
+    } catch (ClosedException &e) {
       break;
     }
     do {
+      char* buf = new char[req.buf_size];
+      if (buf == nullptr)
+        log() << "Failed to allocate buffer." << std::endl;
       auto fut = client->download_blob_to_buffer(
-        loc->first, loc->second, req.offset, req.size, req.buffer, 1);
+        loc->first, loc->second, req.offset, req.buf_size, buf, 1);
       auto result = fut.get();
-      handle(result, log());
-      if (result.success())
+      handle(result, log()); 
+      if (result.success()) {
+        std::unique_lock<std::mutex> lk(comp_lock);
+        window.push_back(ReadResponse{req, buf});
+        std::push_heap(window.begin(), window.end(), std::greater<ReadResponse>());
+        comp_cond.notify_one();
         break;
+      }
       log() << "Retrying..." << std::endl;
     } while (1);
-    push_window(req);
   }
   log() << "Worker exitting..." << std::endl;
 }
+
 }
 }
 }
@@ -173,6 +178,7 @@ GstAzureDownloader* gst_azure_src_downloader_new(const GstAzureSrcConfig* config
     config->worker_count, config->block_size, read_ahead
   ));
   downloader->data = (void*)(new std::shared_ptr <gst::azure::storage::AzureLocation>(nullptr));
+  return downloader;
 }
 
 gboolean downloader_init(GstAzureDownloader* downloader, const gchar* container_name, const gchar* blob_name)

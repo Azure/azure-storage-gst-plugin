@@ -14,11 +14,22 @@ namespace storage {
 
 class AzureDownloader
 {
-  struct ReadBlock
+  struct ReadRequest
   {
     size_t offset;
-    size_t size;
-    char* buffer;
+    size_t buf_size;
+    bool operator> (const ReadRequest& rhs) const {
+      return offset > rhs.offset;
+    }
+  };
+
+  struct ReadResponse
+  {
+    ReadRequest req;
+    char* buf;
+    bool operator> (const ReadResponse& rhs) const {
+      return req > rhs.req;
+    }
   };
   
   // configurations
@@ -26,25 +37,23 @@ class AzureDownloader
   size_t blob_size;
   unsigned worker_count;
   size_t block_size;
-  size_t prefetch_size;
+  size_t prefetch_block_count;
 
   // members
   std::shared_ptr<::azure::storage_lite::blob_client> client;
-  BlockingQueue<ReadBlock> reqs;
+  BlockingQueue<ReadRequest> reqs;
   std::vector<std::future<void>> workers;
-  std::vector<ReadBlock> window;
-  size_t window_start;
-   
-  // circular prefetch buffer
-  size_t prefetch_offset;
-  char* prefetch_buffer;
-
-  size_t next_cursor;
+  std::vector<ReadResponse> window;
+  // cursor for read() function
+  size_t read_cursor;
+  // cursor for downloader
+  size_t write_cursor;
   std::mutex comp_lock;
   std::condition_variable comp_cond;
+  std::mutex read_lock;
 public:
   AzureDownloader(const std::string &account_name, const std::string &account_key,
-    bool use_https, size_t worker_count, size_t block_size, size_t prefetch_size);
+    bool use_https, size_t worker_count, size_t block_size, size_t prefetch_block_count);
   std::shared_ptr<AzureLocation> init(const std::string &container_name, const std::string &blob_name);
   size_t read(char* buffer, size_t size);
   bool seek(size_t offset);
@@ -52,7 +61,6 @@ public:
 private:
   // worker routines
   void run();
-  void push_window(const ReadBlock blk);
 };
 
 }
