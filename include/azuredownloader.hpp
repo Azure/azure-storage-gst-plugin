@@ -57,6 +57,7 @@ public:
   std::shared_ptr<AzureLocation> init(const std::string &container_name, const std::string &blob_name);
   size_t read(char* buffer, size_t size);
   bool seek(size_t offset);
+  size_t get_size();
   bool destroy();
 private:
   // worker routines

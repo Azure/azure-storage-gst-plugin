@@ -41,7 +41,7 @@ struct _GstAzureSrc
   GstAzureDownloader *downloader;
   GstAzureSrcConfig config;
 
-  gsize total_bytes_read;
+  gsize read_position;
 };
 
 struct _GstAzureSrcClass

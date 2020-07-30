@@ -6,6 +6,7 @@ G_BEGIN_DECLS
 
 #define AZURE_SRC_DEFAULT_WORKER_COUNT 4
 #define AZURE_SRC_DEFAULT_BLOCK_SIZE (4 * 1024 * 1024)
+#define AZURE_SRC_DEFAULT_PREFETCH_BLOCK_COUNT 1
 
 typedef struct {
     gchar *account_name;
@@ -14,9 +15,9 @@ typedef struct {
     gchar *blob_name;
     gchar *blob_endpoint;
     gboolean use_https;
-    gsize worker_count;
+    guint worker_count;
     gsize block_size;
-    gssize read_ahead_size;
+    guint prefetch_block_count;
 } GstAzureSrcConfig;
 
 // read_ahead_size have -1 as default value, which means 1 * block_size
@@ -29,7 +30,7 @@ typedef struct {
   .use_https = TRUE,\
   .worker_count = AZURE_SRC_DEFAULT_WORKER_COUNT,\
   .block_size = AZURE_SRC_DEFAULT_BLOCK_SIZE,\
-  .read_ahead_size = -1\
+  .prefetch_block_count = AZURE_SRC_DEFAULT_PREFETCH_BLOCK_COUNT\
 })
 
 static inline void gst_azure_src_release_config(GstAzureSrcConfig* config)

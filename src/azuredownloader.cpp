@@ -95,6 +95,13 @@ bool AzureDownloader::seek(size_t offset)
   return true;
 }
 
+size_t AzureDownloader::get_size()
+{
+  if (loc == nullptr)
+    return 0;
+  return blob_size;
+}
+
 bool AzureDownloader::destroy()
 {
   // close queue, wait for all workers to finish
@@ -153,14 +160,16 @@ G_BEGIN_DECLS
 
 
 gboolean downloader_init(GstAzureDownloader *downloader, const gchar *container_name, const gchar *blob_name);
-gboolean downloader_read(GstAzureDownloader *downloader, gchar *buffer, gsize size);
+gsize downloader_read(GstAzureDownloader *downloader, gchar *buffer, gsize size);
 gboolean downloader_seek(GstAzureDownloader *downloader, goffset offset);
+gsize downloader_get_size(GstAzureDownloader* downloader);
 gboolean downloader_destroy(GstAzureDownloader *downloader);
 
 static const GstAzureDownloaderClass downloader_class = {
   .init = downloader_init,
   .read = downloader_read,
   .seek = downloader_seek,
+  .get_size = downloader_get_size,
   .destroy = downloader_destroy
 };
 
@@ -171,11 +180,10 @@ GstAzureDownloader* gst_azure_src_downloader_new(const GstAzureSrcConfig* config
   GstAzureDownloader* downloader = new GstAzureDownloader();
   if (downloader == NULL)
     return NULL;
-  size_t read_ahead = (config->read_ahead_size < 0) ? (config->block_size) : (size_t)(config->read_ahead_size);
   downloader->klass = &downloader_class;
   downloader->impl = (void*)(new gst::azure::storage::AzureDownloader(
     config->account_name, config->account_key, config->use_https,
-    config->worker_count, config->block_size, read_ahead
+    config->worker_count, config->block_size, config->prefetch_block_count
   ));
   downloader->data = (void*)(new std::shared_ptr <gst::azure::storage::AzureLocation>(nullptr));
   return downloader;
@@ -186,13 +194,17 @@ gboolean downloader_init(GstAzureDownloader* downloader, const gchar* container_
   location(downloader) = dl(downloader)->init(container_name, blob_name);
   return TRUE;
 }
-gboolean downloader_read(GstAzureDownloader* downloader, gchar* buffer, gsize size)
+gsize downloader_read(GstAzureDownloader* downloader, gchar* buffer, gsize size)
 {
   return dl(downloader)->read(buffer, size);
 }
 gboolean downloader_seek(GstAzureDownloader* downloader, goffset offset)
 {
   return dl(downloader)->seek(offset);
+}
+gsize downloader_get_size(GstAzureDownloader* downloader)
+{
+  return dl(downloader)->get_size();
 }
 gboolean downloader_destroy(GstAzureDownloader* downloader)
 {
