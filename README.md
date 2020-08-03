@@ -1,14 +1,13 @@
 # azure-storage-gst-plugin
 
-This is a gstreamer sink for azure storage.
+This repo contains gstreamer plugins for azure storage.
 
 ## Prerequisites
 
-You'll need `azure-storage-cpplite` and `gstreamer`.
-
-* Follow [azure-storage-cpplite](https://github.com/Azure/azure-storage-cpplite)'s readme and install it locally.
-  * Note that you'll need to build **shared library**. Turn on `BUILD_SHARED_LIBS` when building.
 * [Install gstreamer](https://gstreamer.freedesktop.org/documentation/installing/index.html?gi-language=c#) on your platform.
+* This repo also depends on [azure-storage-cpplite](https://github.com/Azure/azure-storage-cpplite).
+Code for this repo will be automatically built by cmake so that you won't have to install it yourself, but you'll still need to install its
+**dependencies** on your system. Check out [here](https://github.com/Azure/azure-storage-cpplite#install-the-dependencies-eg-on-ubuntu).
 
 This repo is tested under Ubuntu 18.04 & 20.04.
 
@@ -41,17 +40,10 @@ Plugin Details:
   Origin URL               https://www.azure.com/
 
   azuresink: Azure storage sink
+  azuresrc: Azure storage source
 
-  1 features:
-  +-- 1 elements
-$ GST_PLUGIN_PATH=. gst-inspect-1.0 azuresink
-Factory Details:
-  Rank                     none (0)
-  Long-name                Azure storage sink
-  Klass                    Generic
-  Description              Write stream into azure blob storage.
-  Author                   Eugene Chen-yijunc@microsoft.com
-#... and many other details
+  2 features:
+  +-- 2 elements
 ```
 
 ## Using the plugin
@@ -60,10 +52,10 @@ To test it with random snow output:
 
 ```bash
 cd build  # goto the library's location
-# the following four parameters are mandatory
+# the following three parameters are mandatory
 GST_PLUGIN_PATH=. gst-launch-1.0 -v -e videotestsrc pattern=snow ! x264enc ! matroskamux ! \
   azuresink account-name="your account name" account-key="your account key" \
-    container-name="your container name" blob-name="output blob name"
+    location="container_name/blob_name"
 ```
 
 Or if you have a webcam...
@@ -72,5 +64,5 @@ Or if you have a webcam...
 cd build
 GST_PLUGIN_PATH=. gst-launch-1.0 -v -e v4l2src ! videoconvert ! x264enc ! flvmux ! \
   azuresink account-name="your account name" account-key="your account key" \
-    container-name="your container name" blob-name="output blob name"
+    location="container_name/blob_name"
 ```

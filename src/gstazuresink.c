@@ -245,7 +245,7 @@ gst_azure_sink_set_property (GObject * object, guint property_id,
         gchar **tokens = g_strsplit(v, "/", 2);
         if(tokens[0] == NULL || tokens[1] == NULL)
         {
-          g_warning("Location is invalid, expecting container/blob, found %s\n", v);
+          GST_ERROR_OBJECT(azuresink, "Location is invalid, expecting container/blob, found %s\n", v);
           break;
         }
         azuresink->config.container_name = tokens[0];
