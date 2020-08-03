@@ -16,6 +16,7 @@ jobs:
   - script: |
       sudo apt install -y libssl-dev libcurl4-openssl-dev cmake g++ uuid-dev
       sudo apt install -y gstreamer1.0-plugins-base libgstreamer1.0-dev
+      sudo apt install ninja
     displayName: Install dependencies
   - script: |
       git clone https://github.com/catchorg/Catch2.git
