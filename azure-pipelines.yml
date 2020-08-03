@@ -14,6 +14,10 @@ jobs:
     vmImage: 'ubuntu-18.04'
   steps:
   - script: |
+      sudo apt install -y libssl-dev libcurl4-openssl-dev cmake g++ uuid-dev
+      sudo apt install -y gstreamer1.0-plugins-base libgstreamer1.0-dev
+    displayName: Install dependencies
+  - script: |
       cmake CmakeLists.txt -DCMAKE_BUILD_TYPE=Debug -DCMAKE_BUILD_TESTS=ON $(Build.ExtraCmakeOptions)
       cmake --build $(Build.BinariesDirectory)
     displayName: Build tests
