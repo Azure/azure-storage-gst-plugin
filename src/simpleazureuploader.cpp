@@ -13,11 +13,11 @@ namespace storage {
 #define APPEND_BLOCK_MAX_BLOCK_SIZE (2*1024*1024)
 
 // individual uploader logics
-bool UploadWorker::append(UploadBuffer buffer)
+bool UploadWorker::append(const char *buf, size_t size)
 {
   const std::lock_guard<std::mutex> lock(stream_lock);
-  log() << "Appending, length = " << buffer.second << std::endl;
-  stream->write(buffer.first, buffer.second);
+  log() << "Appending, length = " << size << std::endl;
+  stream->write(buf, size);
   finish_lock.lock();
   finished = false;
   finish_lock.unlock();
@@ -25,7 +25,6 @@ bool UploadWorker::append(UploadBuffer buffer)
   return true;
 }
 
-// FIXME find ways to avoid memory copy
 void UploadWorker::run()
 {
   log() << "Worker is running." << std::endl;
@@ -41,13 +40,14 @@ void UploadWorker::run()
       // notify all that stream is flushed
       finish_lock.lock();
       finished = true;
-      finish_lock.unlock();
       finish_cond.notify_all();
+      finish_lock.unlock();
       // wait for new content while not stopped
       std::unique_lock<std::mutex> lk(stream_lock);
-      new_cond.wait(lk);
+      new_cond.wait(lk, [this] {
+        return this->stopped || this->stream->rdbuf()->in_avail() > 0;
+        });
       if(stopped) break;
-      lk.unlock();
     }
     stream_lock.lock();
     // get 2MiB-max trunks from stream
@@ -58,9 +58,10 @@ void UploadWorker::run()
       stream = std::make_unique<std::stringstream>();
     } else {
       // read from stream
-      char *buf = new char[APPEND_BLOCK_MAX_BLOCK_SIZE];
-      stream->read(buf, APPEND_BLOCK_MAX_BLOCK_SIZE);
-      saved_stream = std::make_unique<std::stringstream>(buf);
+      std::string buf;
+      buf.reserve(APPEND_BLOCK_MAX_BLOCK_SIZE);
+      std::copy_n(std::istreambuf_iterator<char>(*stream), APPEND_BLOCK_MAX_BLOCK_SIZE, std::back_inserter(buf));
+      saved_stream = std::make_unique<std::stringstream>(move(buf));
     }
     stream_lock.unlock();
 
@@ -71,10 +72,9 @@ void UploadWorker::run()
     saved_stream->seekg(cur);
 
     log() << "Uploading content, length = " << static_cast<unsigned int>(end - cur) << std::endl;
-    // re-commit the stream object and transfer it
+
     // do not need explicit retry mechanism here, as unsent stream
-    // will be automatically recommitted here
-    
+    // will be automatically recommitted
     auto fut = this->client->append_block_from_stream(loc->first, loc->second, *saved_stream);
     auto result = fut.get();
     handle(result, log());
@@ -95,76 +95,69 @@ void UploadWorker::stop()
 {
   log() << "Stopping." << std::endl;
   stopped = true;
-  new_cond.notify_all();
-  worker.join();
+  new_cond.notify_one();
+  worker.wait();
 }
 
-SimpleAzureUploader::SimpleAzureUploader(const char *account_name, const char *account_key, bool use_https)
+SimpleAzureUploader::SimpleAzureUploader(std::string account_name, std::string account_key, bool use_https)
 {
-  std::string name(account_name);
-  std::string key(account_key);
-  auto credential = std::make_shared<::azure::storage_lite::shared_key_credential>(name, key);
-  auto storage_account = std::make_shared<::azure::storage_lite::storage_account>(name, credential, use_https);
-  this->client = std::make_shared<::azure::storage_lite::blob_client>(storage_account, AZURE_CLIENT_CONCCURRENCY);
+  auto credential = std::make_shared<::azure::storage_lite::shared_key_credential>(account_name, account_key);
+  auto storage_account = std::make_shared<::azure::storage_lite::storage_account>(account_name, credential, use_https);
+  client = std::make_shared<::azure::storage_lite::blob_client>(storage_account, AZURE_CLIENT_CONCCURRENCY);
 }
 
 // create a new stream.
 std::shared_ptr<AzureLocation>
-SimpleAzureUploader::init(const char *container_name, const char *blob_name)
+SimpleAzureUploader::init(std::string container_name, std::string blob_name)
 {
-  auto ret = std::make_shared<AzureLocation>(std::string(container_name), std::string(blob_name));
+  loc = std::make_shared<AzureLocation>(container_name, blob_name);
   // build a new upload worker in place
-  auto worker = std::make_unique<UploadWorker>(ret, this->client);
-  this->uploads.emplace(ret, move(worker));
-  return ret;
+  worker = std::make_unique<UploadWorker>(loc, this->client);
+  return loc;
 }
 
-// append block of data. Push data to queue and return immediately.
+// Append block of data in a non-blocking manner.
 bool
-SimpleAzureUploader::upload(std::shared_ptr<AzureLocation> loc, const char *data, size_t size)
+SimpleAzureUploader::upload(const char *data, size_t size)
 {
-  if(!size) {
+  if (loc == nullptr)
+  {
+    log() << "Warning: Upload called before uploader is initialized." << std::endl;
     return true;
   }
-  // append it
-  auto worker_iter = uploads.find(loc);
-  if(worker_iter == uploads.end()) {
-    // not found
-    return false;
-  } else {
-    return worker_iter->second->append(UploadBuffer(data, size));
-  }
+  if (size == 0)
+    return true;
+  return worker->append(data, size);
 }
 
 bool
-SimpleAzureUploader::flush(std::shared_ptr<AzureLocation> loc)
+SimpleAzureUploader::flush()
 {
-  auto worker_iter = uploads.find(loc);
   // wait for specific location to flush
-  if(worker_iter == uploads.end()) {
-    std::cerr << "Warning: flushing a non-existent location."
-      << (loc->first) << ' ' << (loc->second) << std::endl;
+  if(loc == nullptr)
+  {
+    log() << "Warning: Flush called before uploader is initialized." << std::endl;
     return true;
   }
-  worker_iter->second->flush();
+  worker->flush();
   return true;
 }
 
 bool
-SimpleAzureUploader::destroy(std::shared_ptr<AzureLocation> loc)
+SimpleAzureUploader::destroy()
 {
   // wait for specific location to flush
-  auto worker_iter = uploads.find(loc);
-  if(worker_iter == uploads.end()) {
-    std::cerr << "Flushing a non-existent location."
-      << (loc->first) << ' ' << (loc->second) << std::endl;
+  if(loc == nullptr)
+  {
+    log() << "Warning: Flush called before uploader is initialized." << std::endl;
     return true;
   }
-  worker_iter->second->flush();
-  // FIXME possible race condition, new data might be injected in between
-  // possibility is scarce though
-  worker_iter->second->stop();
-  uploads.erase(worker_iter);
+  // possible race condition between flush & stop
+  // does not matter though
+  worker->flush();
+  worker->stop();
+  loc = nullptr;
+  worker = nullptr;
   return true;
 }
 
@@ -225,21 +218,21 @@ gboolean gst_simple_azure_uploader_flush(GstAzureUploader *uploader)
 {
   if(location(uploader) == nullptr)
     return FALSE;
-  return simple_uploader(uploader)->flush(location(uploader));
+  return simple_uploader(uploader)->flush();
 }
 
 gboolean gst_simple_azure_uploader_destroy(GstAzureUploader *uploader)
 {
   if(location(uploader) == nullptr)
     return FALSE;
-  return simple_uploader(uploader)->destroy(location(uploader));
+  return simple_uploader(uploader)->destroy();
 }
 
 gboolean gst_simple_azure_uploader_upload(GstAzureUploader *uploader, const gchar *data, const gsize size)
 {
   if(location(uploader) == nullptr)
     return FALSE;
-  return simple_uploader(uploader)->upload(location(uploader), (const char *)data, (size_t)size);
+  return simple_uploader(uploader)->upload((const char *)data, (size_t)size);
 }
 
 G_END_DECLS

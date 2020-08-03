@@ -52,6 +52,7 @@ static void gst_azure_sink_set_property (GObject * object,
     guint property_id, const GValue * value, GParamSpec * pspec);
 static void gst_azure_sink_get_property (GObject * object,
     guint property_id, GValue * value, GParamSpec * pspec);
+static void gst_azure_sink_finalize (GObject * object);
 static gboolean gst_azure_sink_start (GstBaseSink * sink);
 static gboolean gst_azure_sink_stop (GstBaseSink * sink);
 static gboolean gst_azure_sink_query (GstBaseSink * sink, GstQuery * query);
@@ -64,7 +65,6 @@ static GstFlowReturn gst_azure_sink_render (GstBaseSink * sink,
  * but not necessary. These interfaces are neither implemented nor registered.
  */
 // static void gst_azure_sink_dispose (GObject * object);
-// static void gst_azure_sink_finalize (GObject * object);
 
 // static GstCaps *gst_azure_sink_get_caps (GstBaseSink * sink, GstCaps * filter);
 // static gboolean gst_azure_sink_set_caps (GstBaseSink * sink, GstCaps * caps);
@@ -95,6 +95,7 @@ enum
   PROP_ACCOUNT_KEY,
   PROP_LOCATION,
   PROP_USE_HTTPS,
+  PROP_BLOB_TYPE,
   PROP_BLOCK_SIZE,
   PROP_WORKER_COUNT,
   PROP_COMMIT_BLOCK_COUNT,
@@ -134,13 +135,13 @@ gst_azure_sink_class_init (GstAzureSinkClass * klass)
   GST_INFO("azuresink set metadata");
   gobject_class->set_property = gst_azure_sink_set_property;
   gobject_class->get_property = gst_azure_sink_get_property;
+  gobject_class->finalize = gst_azure_sink_finalize;
   base_sink_class->start = GST_DEBUG_FUNCPTR (gst_azure_sink_start);
   base_sink_class->stop = GST_DEBUG_FUNCPTR (gst_azure_sink_stop);
   base_sink_class->query = GST_DEBUG_FUNCPTR (gst_azure_sink_query);
   base_sink_class->event = GST_DEBUG_FUNCPTR (gst_azure_sink_event);
   base_sink_class->render = GST_DEBUG_FUNCPTR (gst_azure_sink_render);
   // gobject_class->dispose = gst_azure_sink_dispose;
-  // gobject_class->finalize = gst_azure_sink_finalize;
   // base_sink_class->get_caps = GST_DEBUG_FUNCPTR (gst_azure_sink_get_caps);
   // base_sink_class->set_caps = GST_DEBUG_FUNCPTR (gst_azure_sink_set_caps);
   // base_sink_class->fixate = GST_DEBUG_FUNCPTR (gst_azure_sink_fixate);
@@ -181,6 +182,12 @@ gst_azure_sink_class_init (GstAzureSinkClass * klass)
       "Whether to use https or not in azure storage REST API. This is highly recommended "
       "and enabled by default, by you can turn it off for debug purporses.",
       TRUE, G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, PROP_BLOB_TYPE,
+    g_param_spec_string ("blob-type", "azure blob storage blob type",
+      "Azure blob storage blob type. Currently only block blobs and append blobs are supported. "
+      "This param can only be `block` or `append`, `block` by default.", "block",
+      (G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS)));
   
   g_object_class_install_property (gobject_class, PROP_BLOCK_SIZE,
     g_param_spec_uint("block-size", "azure storage block size",
@@ -211,7 +218,6 @@ gst_azure_sink_init (GstAzureSink *azuresink)
   azuresink->total_bytes_written = 0;
   GST_DEBUG_OBJECT(azuresink, "init");
   /* NOTE pads are configured here with gst_pad_set_*_function () */
-  // gst_element_add_pad(GST_ELEMENT(azuresink), azuresink->sinkpad);
   gst_base_sink_set_sync(GST_BASE_SINK(azuresink), FALSE);
 }
 
@@ -256,6 +262,19 @@ gst_azure_sink_set_property (GObject * object, guint property_id,
       gst_azure_elements_set_boolean_property(azuresink, value,
         &azuresink->config.use_https, "use-https");
       break;
+    case PROP_BLOB_TYPE:
+    {
+      const gchar* v = g_value_get_string(value);
+      if (g_strcmp0(v, "block") == 0 || g_strcmp0(v, "append") == 0)
+      {
+        gst_azure_elements_set_string_property(azuresink, value,
+          &azuresink->config.blob_type, "blob-type");
+      }
+      else {
+        GST_ERROR_OBJECT(azuresink, "Invalid blob type %s.\n", v);
+      }
+      break;
+    }
     case PROP_BLOCK_SIZE:
       gst_azure_elements_set_uint_property(azuresink, value,
         &azuresink->config.block_size, "block-size");
@@ -309,6 +328,9 @@ gst_azure_sink_get_property (GObject * object, guint property_id,
     case PROP_WORKER_COUNT:
       g_value_set_uint(value, azuresink->config.worker_count);
       break;
+    case PROP_BLOB_TYPE:
+      g_value_set_string(value, azuresink->config.blob_type);
+      break;
     case PROP_BLOCK_SIZE:
       g_value_set_uint(value, azuresink->config.block_size);
       break;
@@ -324,23 +346,6 @@ gst_azure_sink_get_property (GObject * object, guint property_id,
   }
 }
 
-// NOTE not included
-void
-gst_azure_sink_dispose (GObject * object)
-{
-  GstAzureSink *azuresink = GST_AZURE_SINK (object);
-
-  GST_DEBUG_OBJECT (azuresink, "dispose");
-
-  /* clean up as possible.  may be called multiple times */
-  // release config
-  gst_azure_sink_release_config(&azuresink->config);
-  G_OBJECT_CLASS (gst_azure_sink_parent_class)->dispose (object);
-}
-
-// NOTE not included
-// NOTE called when plguin is destroyed
-// maybe not necessary?
 void
 gst_azure_sink_finalize (GObject * object)
 {
@@ -349,6 +354,7 @@ gst_azure_sink_finalize (GObject * object)
   GST_DEBUG_OBJECT (azuresink, "finalize");
 
   /* clean up object here */
+  gst_azure_sink_release_config(&azuresink->config);
 
   G_OBJECT_CLASS (gst_azure_sink_parent_class)->finalize (object);
 }
@@ -378,8 +384,13 @@ gst_azure_sink_start (GstBaseSink * sink)
 
   if(azuresink->uploader == NULL)
   {
-    // azuresink->uploader = gst_azure_sink_uploader_new(&azuresink->config);
-    azuresink->uploader = gst_azure_sink_block_uploader_new(&azuresink->config);
+    if (g_strcmp0(azuresink->config.blob_type, "append") == 0)
+      azuresink->uploader = gst_azure_sink_uploader_new(&azuresink->config);
+    else if (azuresink->config.blob_type == NULL ||
+      g_strcmp0(azuresink->config.blob_type, "block") == 0)
+      azuresink->uploader = gst_azure_sink_block_uploader_new(&azuresink->config);
+    else
+      GST_ERROR_OBJECT(azuresink, "Invalid blob type %s.\n", azuresink->config.blob_type);
   }
 
   gboolean init_success = gst_azure_uploader_init(azuresink->uploader, azuresink->config.container_name, azuresink->config.blob_name);
@@ -418,10 +429,8 @@ gst_azure_sink_stop (GstBaseSink * sink)
 static gboolean
 gst_azure_sink_query (GstBaseSink * sink, GstQuery * query)
 {
-  GST_INFO("Entering query");
   gboolean ret = FALSE;
   GstAzureSink *azuresink = GST_AZURE_SINK (sink);
-  GST_INFO("Got azure sink");
   GST_DEBUG_OBJECT (azuresink, "query");
 
   switch(GST_QUERY_TYPE(query)) {
@@ -438,8 +447,10 @@ gst_azure_sink_query (GstBaseSink * sink, GstQuery * query)
         case GST_FORMAT_BYTES:
           gst_query_set_position(query, GST_FORMAT_BYTES,
             azuresink->total_bytes_written);
+          ret = TRUE;
           break;
         default:
+          ret = FALSE;
           break;
       }
       break;
@@ -475,10 +486,10 @@ gst_azure_sink_event (GstBaseSink * sink, GstEvent * event)
     case GST_EVENT_EOS:
     {
       gboolean flush_success = gst_azure_uploader_flush(azuresink->uploader);
-      if(!flush_success)
+      if (!flush_success)
       {
         GST_ELEMENT_ERROR(sink, RESOURCE, SYNC,
-        ("Failed to flush content before stopping the stream."), (NULL));
+          ("Failed to flush content before stopping the stream."), (NULL));
         return FALSE;
       }
     }
@@ -497,11 +508,10 @@ gst_azure_sink_read_buffer(GstAzureSink *sink, GstBuffer *buffer)
   if(!gst_buffer_map(buffer, &map_info, GST_MAP_READ))
   {
     GST_ELEMENT_ERROR (sink, RESOURCE, WRITE,
-        ("Failed to map the buffer."), (NULL));
+      ("Failed to map the buffer."), (NULL));
     return FALSE;
   }
 
-  // copy all of them to sstream
   if(!gst_azure_uploader_upload(sink->uploader, (const gchar *)map_info.data, map_info.size))
   {
     GST_ELEMENT_ERROR(sink, RESOURCE, WRITE,

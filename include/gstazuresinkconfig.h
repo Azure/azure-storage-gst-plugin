@@ -6,9 +6,11 @@ G_BEGIN_DECLS
 
 #define AZURE_SINK_DEFAULT_BLOCK_SIZE (4*1024*1024)
 #define AZURE_SINK_DEFAULT_WORKER_COUNT 4
-
 #define AZURE_SINK_DEFAULT_COMMIT_BLOCK_COUNT 16
 #define AZURE_SINK_DEFAULT_COMMIT_INTERVAL_MS 60000
+
+#define AZURE_SINK_BLOB_TYPE_BLOCK "block"
+#define AZURE_SINK_BLOB_TYPE_APPEND "append"
 
 typedef struct {
     gchar *account_name;
@@ -17,6 +19,7 @@ typedef struct {
     gchar *blob_name;
     gchar *blob_endpoint;
     gboolean use_https;
+    gchar *blob_type;
     guint block_size;
     guint worker_count;
     guint commit_block_count;
@@ -30,6 +33,7 @@ typedef struct {
   .blob_name = NULL,\
   .blob_endpoint = NULL,\
   .use_https = TRUE,\
+  .blob_type = NULL,\
   .block_size = AZURE_SINK_DEFAULT_BLOCK_SIZE,\
   .worker_count = AZURE_SINK_DEFAULT_WORKER_COUNT,\
   .commit_block_count = AZURE_SINK_DEFAULT_COMMIT_BLOCK_COUNT,\

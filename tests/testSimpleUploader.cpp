@@ -4,6 +4,7 @@
 #include <thread>
 
 #include "simpleazureuploader.hpp"
+#include "testUtils.hpp"
 
 using namespace std::chrono_literals;
 int main(int argc, char** argv) {
@@ -14,12 +15,19 @@ int main(int argc, char** argv) {
 
   // Test our azure uploader
   gst::azure::storage::SimpleAzureUploader uploader(account_name.c_str(), account_key.c_str(), use_https);
-  auto loc = uploader.init("videostore", "teststream");
-  uploader.upload(loc, "asdfasdfasdf", 12);
-  uploader.upload(loc, "hahaha", 6);
-  std::this_thread::sleep_for(2s);
-  uploader.upload(loc, "heiheihei", 9);
-  uploader.flush(loc);
-  uploader.destroy(loc);
+  uploader.init("videostore", "teststream.txt");
+  // upload 32MiB of random stream, size of each trunk is random
+  unsigned sz = 32 * 1024 * 1024;
+  for (unsigned i = 0; i < sz;)
+  {
+    unsigned cur_size = std::rand();
+    cur_size = std::min(cur_size, sz - i);
+    const char* buf = getRandomBytes(cur_size);
+    uploader.upload(buf, cur_size);
+    i += cur_size;
+    delete[] buf;
+  }
+  uploader.flush();
+  uploader.destroy();
   return 0;
 }

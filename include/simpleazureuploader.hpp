@@ -27,30 +27,31 @@ class UploadWorker {
   bool finished;
   bool stopped;
   std::shared_ptr<::azure::storage_lite::blob_client> client;
-  std::thread worker;
+  std::future<void> worker;
 public:
   UploadWorker(std::shared_ptr<AzureLocation> loc,
-    std::shared_ptr<::azure::storage_lite::blob_client> client):
+    std::shared_ptr<::azure::storage_lite::blob_client> client) :
     loc(loc), stream(std::move(std::make_unique<std::stringstream>())), finished(true), stopped(false),
-    client(client), worker([this] { this->run(); }) {}
-  bool append(UploadBuffer buffer);
+    client(client), worker(std::async(&UploadWorker::run, this)) {}
+  ~UploadWorker() { stop(); }
+  bool append(const char *, size_t);
   void run();
   void flush();
   void stop();
 };
 
-const int AZURE_CLIENT_CONCCURRENCY = 8;
-
 class SimpleAzureUploader {
 private:
   std::shared_ptr<::azure::storage_lite::blob_client> client;
-  std::map<std::shared_ptr<AzureLocation>, std::unique_ptr<UploadWorker>> uploads;
+  std::shared_ptr<AzureLocation> loc;
+  std::unique_ptr<UploadWorker> worker;
 public:
-  SimpleAzureUploader(const char *account_name, const char *account_key, bool use_https);
-  std::shared_ptr<AzureLocation> init(const char *container_name, const char *blob_name);
-  bool upload(std::shared_ptr<AzureLocation> loc, const char *data, size_t size);
-  bool flush(std::shared_ptr<AzureLocation> loc);
-  bool destroy(std::shared_ptr<AzureLocation> loc);
+  const int AZURE_CLIENT_CONCCURRENCY = 4;
+  SimpleAzureUploader(std::string account_name, std::string account_key, bool use_https);
+  std::shared_ptr<AzureLocation> init(std::string container_name, std::string blob_name);
+  bool upload(const char *data, size_t size);
+  bool flush();
+  bool destroy();
 };
 
 }
