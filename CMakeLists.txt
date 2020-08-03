@@ -37,8 +37,7 @@ pkg_check_modules(GSTREAMER REQUIRED gstreamer-1.0)
 pkg_check_modules(GSTREAMER_BASE REQUIRED gstreamer-base-1.0)
 pkg_check_modules(LIBCURL REQUIRED libcurl)
 pkg_check_modules(OPENSSL REQUIRED openssl)
-# find boost
-find_package(Boost REQUIRED)
+
 # find azure-storage-cpplite
 add_subdirectory(${PROJECT_SOURCE_DIR}/extern/azure-storage-cpplite)
 
@@ -47,7 +46,6 @@ include_directories(
     ${GLIB_INCLUDE_DIRS}
     ${GSTREAMER_INCLUDE_DIRS}
     ${GSTREAMER_BASE_INCLUDE_DIRS}
-    ${BOOST_INCLUDEDIR}
 )
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
@@ -57,7 +55,6 @@ link_libraries(
     ${GLIB_LIBRARIES}
     ${GSTREAMER_LIBRARIES}
     ${GSTREAMER_BASE_LIBRARIES}
-    ${BOOST_LIBRARIES}
     pthread
 )
 
