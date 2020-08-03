@@ -7,7 +7,7 @@
             "buildRoot": "${projectDir}\\out\\build\\${name}",
             "installRoot": "${projectDir}\\out\\install\\${name}",
             "cmakeExecutable": "/usr/bin/cmake",
-            "cmakeCommandArgs": "",
+            "cmakeCommandArgs": "-DBUILD_TESTS=ON",
             "buildCommandArgs": "",
             "ctestCommandArgs": "",
             "inheritEnvironments": [ "linux_x64" ],

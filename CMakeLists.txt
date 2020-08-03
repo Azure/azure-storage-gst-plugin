@@ -29,11 +29,6 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fpic")
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpic")
 
-# set debug build type
-set(CMAKE_BUILD_TYPE Debug)
-
-# include(CTest)
-# enable_testing()
 
 # use PkgConfig to configure gstreamer dependencies &
 # azure storage cpplite dependency
@@ -68,7 +63,12 @@ link_libraries(
 )
 
 add_subdirectory(src)
-add_subdirectory(tests)
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    include(CTest)
+endif()
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
+    add_subdirectory(tests)
+endif()
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
