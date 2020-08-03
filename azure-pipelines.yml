@@ -18,12 +18,12 @@ jobs:
       sudo apt install -y gstreamer1.0-plugins-base libgstreamer1.0-dev
     displayName: Install dependencies
   - script: |
-      mkdir $(Build.BinariesDirectory)
-      cd $(Build.BinariesDirectory)
+      mkdir build
+      cd build
       cmake .. -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON $(Build.ExtraCmakeOptions)
       cmake --build .
     displayName: Build tests
   - script: |
-      cd $(Build.BinariesDirectory)/tests
+      cd build/tests
       ./azure-sink-test
     displayName: Run tests
