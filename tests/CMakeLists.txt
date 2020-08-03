@@ -3,8 +3,16 @@ project(azure-storage-gst-plugin VERSION 0.1.0)
 
 set(CMAKE_BUILD_TYPE Debug)
 
-include_directories(${AZURE_SINK_HEADERS_DIR})
-link_libraries(gstazureelements)
+# gstreamer check dependency
+
+find_package(PkgConfig)
+pkg_check_modules(GSTREAMER_CHECK REQUIRED gstreamer-check-1.0)
+
+include_directories(${GSTREAMER_CHECK_INCLUDE_DIRS})
+link_libraries(
+    ${GSTREAMER_CHECK_LIBRARIES}
+    gstazureelements
+)
 
 add_executable(simple-uploader-test testSimpleUploader.cpp)
 add_executable(block-uploader-test testBlockUploader.cpp)

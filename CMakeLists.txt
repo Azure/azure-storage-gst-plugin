@@ -29,7 +29,6 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fpic")
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpic")
 
-
 # use PkgConfig to configure gstreamer dependencies &
 # azure storage cpplite dependency
 find_package(PkgConfig)
@@ -63,6 +62,8 @@ link_libraries(
 )
 
 add_subdirectory(src)
+
+# tests
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     include(CTest)
 endif()
@@ -72,4 +73,3 @@ endif()
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
-include(CPack)
