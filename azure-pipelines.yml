@@ -1,0 +1,36 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- master
+
+jobs:
+- job: build_test_linux
+  displayName: Build and test on Linux
+  timeoutInMinutes: 30
+  pool:
+    vmImage: 'ubuntu-18.04'
+  steps:
+  - script: |
+      sudo apt install -y libssl-dev libcurl4-openssl-dev cmake g++ uuid-dev
+      sudo apt install -y gstreamer1.0-plugins-base libgstreamer1.0-dev
+      sudo apt install ninja-build
+    displayName: Install dependencies
+  - script: |
+      git clone https://github.com/catchorg/Catch2.git
+      cd Catch2
+      cmake -Bbuild -H. -DBUILD_TESTING=OFF
+      sudo cmake --build build/ --target install
+    displayName: Install Catch2 test framework
+  - script: |
+      mkdir build
+      cd build
+      cmake .. -G "Ninja" -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON $BUILD_EXTRACMAKEOPTIONS
+      cmake --build .
+    displayName: Build tests
+  - script: |
+      cd build
+      GST_PLUGIN_PATH=. tests/azure-sink-test
+    displayName: Run tests
