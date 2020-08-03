@@ -26,10 +26,10 @@ jobs:
   - script: |
       mkdir build
       cd build
-      cmake .. -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON $(Build.ExtraCmakeOptions)
+      cmake .. -G "Ninja" -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON $BUILD_EXTRACMAKEOPTIONS
       cmake --build .
     displayName: Build tests
   - script: |
-      cd build/tests
-      ./azure-sink-test
+      cd build
+      GST_PLUGIN_PATH=. tests/azure-sink-test
     displayName: Run tests
