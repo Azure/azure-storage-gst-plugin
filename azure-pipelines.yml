@@ -18,6 +18,12 @@ jobs:
       sudo apt install -y gstreamer1.0-plugins-base libgstreamer1.0-dev
     displayName: Install dependencies
   - script: |
+      git clone https://github.com/catchorg/Catch2.git
+      cd Catch2
+      cmake -Bbuild -H. -DBUILD_TESTING=OFF
+      sudo cmake --build build/ --target install
+    displayName: Install Catch2 test framework
+  - script: |
       mkdir build
       cd build
       cmake .. -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON $(Build.ExtraCmakeOptions)
