@@ -47,7 +47,6 @@ include_directories(
     ${GLIB_INCLUDE_DIRS}
     ${GSTREAMER_INCLUDE_DIRS}
     ${GSTREAMER_BASE_INCLUDE_DIRS}
-    ${BOOST_INCLUDEDIR}
 )
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
@@ -57,7 +56,6 @@ link_libraries(
     ${GLIB_LIBRARIES}
     ${GSTREAMER_LIBRARIES}
     ${GSTREAMER_BASE_LIBRARIES}
-    ${BOOST_LIBRARIES}
     pthread
 )
 
