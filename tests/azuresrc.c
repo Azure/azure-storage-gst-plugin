@@ -166,6 +166,7 @@ GST_START_TEST(test_invalid_location_should_fail)
 }
 GST_END_TEST
 
+// TODO figure out how to test source element
 GST_START_TEST(test_read_content_sequential)
 {
   GstAzureDownloader *downloader = test_downloader_new();

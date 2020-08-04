@@ -33,4 +33,5 @@ jobs:
   - script: |
       cd build
       GST_PLUGIN_PATH=. tests/azure-sink-test
+      GST_PLUGIN_PATH=. tests/azure-src-test
     displayName: Run tests
