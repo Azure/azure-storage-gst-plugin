@@ -33,12 +33,13 @@ typedef struct {
   .blob_name = NULL,\
   .blob_endpoint = NULL,\
   .use_https = TRUE,\
-  .blob_type = NULL,\
+  .blob_type = g_strdup(AZURE_SINK_BLOB_TYPE_BLOCK),\
   .block_size = AZURE_SINK_DEFAULT_BLOCK_SIZE,\
   .worker_count = AZURE_SINK_DEFAULT_WORKER_COUNT,\
   .commit_block_count = AZURE_SINK_DEFAULT_COMMIT_BLOCK_COUNT,\
   .commit_interval_ms = AZURE_SINK_DEFAULT_COMMIT_INTERVAL_MS\
 })
+
 
 static inline void gst_azure_sink_release_config(GstAzureSinkConfig *config)
 {

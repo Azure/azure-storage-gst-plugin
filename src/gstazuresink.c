@@ -186,7 +186,7 @@ gst_azure_sink_class_init (GstAzureSinkClass * klass)
   g_object_class_install_property (gobject_class, PROP_BLOB_TYPE,
     g_param_spec_string ("blob-type", "azure blob storage blob type",
       "Azure blob storage blob type. Currently only block blobs and append blobs are supported. "
-      "This param can only be `block` or `append`, `block` by default.", "block",
+      "This param can only be `block` or `append`, `block` by default.", AZURE_SINK_BLOB_TYPE_BLOCK,
       (G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY | G_PARAM_STATIC_STRINGS)));
   
   g_object_class_install_property (gobject_class, PROP_BLOCK_SIZE,
@@ -228,7 +228,7 @@ gst_azure_sink_set_property (GObject * object, guint property_id,
   GstAzureSink *azuresink = GST_AZURE_SINK (object);
 
   GST_DEBUG_OBJECT (azuresink, "set_property");
-
+  // properties are not allowed to change dynamically
   switch (property_id) {
     case PROP_ACCOUNT_NAME:
       gst_azure_elements_set_string_property(azuresink, value,
@@ -245,12 +245,13 @@ gst_azure_sink_set_property (GObject * object, guint property_id,
         gchar **tokens = g_strsplit(v, "/", 2);
         if(tokens[0] == NULL || tokens[1] == NULL)
         {
-          GST_ERROR_OBJECT(azuresink, "Location is invalid, expecting container/blob, found %s\n", v);
+          GST_ELEMENT_ERROR(azuresink, RESOURCE, FAILED,
+            ("Location is invalid, expecting container/blob, found %s\n", v), (NULL));
           break;
         }
         azuresink->config.container_name = tokens[0];
         azuresink->config.blob_name = tokens[1];
-        g_info("Settting container name to %s, blob name to %s.\n", tokens[0], tokens[1]);
+        GST_INFO_OBJECT(azuresink, "Setting container name to %s, blob name to %s.", tokens[0], tokens[1]);
       }
       break;
     }
@@ -271,7 +272,8 @@ gst_azure_sink_set_property (GObject * object, guint property_id,
           &azuresink->config.blob_type, "blob-type");
       }
       else {
-        GST_ERROR_OBJECT(azuresink, "Invalid blob type %s.\n", v);
+        GST_ELEMENT_ERROR(azuresink, RESOURCE, FAILED,
+          ("Invalid blob type %s.", v), (NULL));
       }
       break;
     }
@@ -378,7 +380,7 @@ gst_azure_sink_start (GstBaseSink * sink)
     GSTR_IS_EMPTY(azuresink->config.blob_name))
   {
     GST_ELEMENT_ERROR(sink, RESOURCE, NOT_FOUND,
-      ("Missing contner name or blob name, cannot determine destination."), (NULL));
+      ("Missing container name or blob name, cannot determine destination."), (NULL));
     return FALSE;
   }
 
