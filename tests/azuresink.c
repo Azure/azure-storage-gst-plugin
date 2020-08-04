@@ -12,12 +12,11 @@ static const gchar *default_location = "videostore/testvideostream";
 static GstStaticPadTemplate srcTemplate = GST_STATIC_PAD_TEMPLATE("src",
   GST_PAD_SRC, GST_PAD_ALWAYS, GST_STATIC_CAPS_ANY);
 
-
 // uploader stub
 typedef struct
 {
   gboolean flushed;
-} testUploaderData;
+} TestUploaderData;
 
 static gboolean test_uploader_init(GstAzureUploader* uploader, const gchar* container_name, const gchar* blob_name)
 {
@@ -26,7 +25,7 @@ static gboolean test_uploader_init(GstAzureUploader* uploader, const gchar* cont
 
 static gboolean test_uploader_flush(GstAzureUploader* uploader)
 {
-  ((testUploaderData *)(uploader->data))->flushed = TRUE;
+  ((TestUploaderData *)(uploader->data))->flushed = TRUE;
   return TRUE;
 }
 
@@ -37,13 +36,13 @@ static gboolean test_uploader_destroy(GstAzureUploader* uploader)
 
 static gboolean test_uploader_upload(GstAzureUploader* uploader, const gchar* data, gsize size)
 {
-  ((testUploaderData *)(uploader->data))->flushed = FALSE;
+  ((TestUploaderData *)(uploader->data))->flushed = FALSE;
   return TRUE;
 }
 
 static gboolean test_uploader_flushed(GstAzureUploader* uploader)
 {
-  return ((testUploaderData *)(uploader->data))->flushed;
+  return ((TestUploaderData *)(uploader->data))->flushed;
 }
 
 static GstAzureUploaderClass test_uploader_klass = {
@@ -59,7 +58,7 @@ static GstAzureUploader *test_uploader_new()
   fail_if(uploader == NULL);
   uploader->klass = &test_uploader_klass;
   uploader->impl = NULL;
-  uploader->data = g_new(testUploaderData, 1);
+  uploader->data = g_new(TestUploaderData, 1);
   fail_if(uploader->data == NULL);
   return uploader;
 }
@@ -166,7 +165,6 @@ GST_START_TEST(test_invalid_blob_type_should_ignore)
 {
   GstAzureUploader *uploader = test_uploader_new();
   GstElement *sink = get_default_sink(uploader);
-  fail_if(sink == NULL);
   
   g_object_set(sink,
     "account_name", account_name,
@@ -211,7 +209,6 @@ GST_START_TEST(test_query_position)
 {
   GstAzureUploader *uploader = test_uploader_new();
   GstElement *sink = get_default_sink(uploader);
-  fail_if(sink == NULL);
 
   const guint64 bytes_to_write = 23333;
   GstPad *srcpad = gst_check_setup_src_pad(sink, &srcTemplate);
@@ -240,7 +237,6 @@ GST_START_TEST(test_query_seeking_should_fail)
 {
   GstAzureUploader *uploader = test_uploader_new();
   GstElement *sink = get_default_sink(uploader);
-  fail_if(sink == NULL);
   
   GstStateChangeReturn ret = gst_element_set_state (sink, GST_STATE_PLAYING);
   fail_unless_equals_int(GST_STATE_CHANGE_ASYNC, ret);
@@ -263,9 +259,9 @@ GST_END_TEST
 
 GST_PLUGIN_STATIC_DECLARE(azureelements);
 
-static Suite *s3sink_suite(void)
+static Suite *azuresink_suite(void)
 {
-  Suite *s = suite_create("s3sink");
+  Suite *s = suite_create("azuresink");
   TCase *tc_chain = tcase_create("general");
 
   suite_add_tcase(s, tc_chain);
@@ -281,4 +277,4 @@ static Suite *s3sink_suite(void)
   return s;
 }
 
-GST_CHECK_MAIN(s3sink)
+GST_CHECK_MAIN(azuresink)

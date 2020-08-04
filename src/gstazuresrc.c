@@ -24,9 +24,11 @@
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch-1.0 -v fakesrc ! azuresrc ! FIXME ! fakesink
+ * gst-launch-1.0 -v azuresrc \
+ *    account-name="..." account-key="..." block-size=1048576 \
+ *    location = "container_name/blob_name" ! fakesink
  * ]|
- * FIXME Describe what the pipeline does.
+ * Read from azure blob storage 1MiB by 1MiB and feed the content to fakesink.
  * </refsect2>
  */
 
@@ -191,12 +193,13 @@ gst_azure_src_set_property (GObject * object, guint property_id,
         gchar** tokens = g_strsplit(v, "/", 2);
         if (tokens[0] == NULL || tokens[1] == NULL)
         {
-          g_warning("Location is invalid, expecting container/blob, found %s\n", v);
+          GST_ELEMENT_ERROR(azuresrc, RESOURCE, FAILED, 
+            ("Location is invalid, expecting container/blob, found %s\n", v), (NULL));
           break;
         }
         azuresrc->config.container_name = tokens[0];
         azuresrc->config.blob_name = tokens[1];
-        g_info("Settting container name to %s, blob name to %s.\n", tokens[0], tokens[1]);
+        g_info("Setting container name to %s, blob name to %s.\n", tokens[0], tokens[1]);
       }
       break;
     }
@@ -275,7 +278,6 @@ gst_azure_src_finalize (GObject *object)
   // free up configuration and downloader
   gst_azure_src_release_config(&azuresrc->config);
   if(azuresrc->downloader != NULL)
-
     gst_azure_downloader_destroy(azuresrc->downloader);
   azuresrc->downloader = NULL;
 

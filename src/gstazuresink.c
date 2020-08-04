@@ -24,9 +24,11 @@
  * <refsect2>
  * <title>Example</title>
  * |[
- * gst-launch-1.0 -v fakesrc ! azuresink
+ * gst-launch-1.0 -v fakesrc ! \
+ *    azuresink account-name="xxx" account-key="xxx" \
+ *    location="container_name/blob_name" blob-type="block"
  * ]|
- * Upload fakesrc's content to azure blob storage.
+ * Upload fakesrc's content to azure blob storage as a block blob.
  * </refsect2>
  */
 
@@ -46,8 +48,6 @@ GST_DEBUG_CATEGORY_STATIC (gst_azure_sink_debug_category);
 #define GST_CAT_DEFAULT gst_azure_sink_debug_category
 
 /* prototypes */
-
-
 static void gst_azure_sink_set_property (GObject * object,
     guint property_id, const GValue * value, GParamSpec * pspec);
 static void gst_azure_sink_get_property (GObject * object,
@@ -109,7 +109,6 @@ GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
     GST_STATIC_CAPS_ANY);
-
 
 /* class initialization */
 

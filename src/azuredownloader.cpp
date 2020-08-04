@@ -70,6 +70,14 @@ size_t AzureDownloader::read(char* buffer, size_t size)
   {
     comp_cond.wait(lk, [=] { return !this->window.empty() && this->window.front().req.offset <= this->read_cursor;  });
     ReadResponse &resp = window.front();
+    if(resp.req.offset + resp.req.buf_size < read_cursor)
+    {
+      // seeked before, remove this entry
+      delete[] resp.buf;
+      std::pop_heap(window.begin(), window.end(), std::greater<ReadResponse>());
+      window.pop_back();
+      break;
+    }
     size_t new_read_cursor = std::min(target, resp.req.offset + resp.req.buf_size);
     // log() << "Read directly " << (new_read_cursor - read_cursor) / 1024 << "KiB." << std::endl;
     memcpy(buffer, resp.buf + read_cursor - resp.req.offset, new_read_cursor - read_cursor);
@@ -89,7 +97,7 @@ size_t AzureDownloader::read(char* buffer, size_t size)
 bool AzureDownloader::seek(size_t offset)
 {
   // clear window
-  log() << "Seeking to " << offset << std::endl;
+  // log() << "Seeking to " << offset << std::endl;
   std::unique_lock<std::mutex> lk(comp_lock);
   read_cursor = write_cursor = offset;
   window.clear();
