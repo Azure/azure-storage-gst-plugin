@@ -18,8 +18,9 @@ This project use cmake to build.
 ```bash
 mkdir build
 cd build
-cmake ..
-make # and then run...
+cmake --build .
+# to install the plugin system-wide
+sudo cmake --build . --target install
 ```
 
 To inspect the built plugin:
