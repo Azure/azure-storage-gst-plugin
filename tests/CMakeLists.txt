@@ -20,27 +20,8 @@ add_executable(downloader-test testBlockDownloader.cpp)
 add_executable(azure-sink-test azuresink.c)
 add_executable(azure-src-test azuresrc.c)
 
-add_test(
-    NAME TestSimpleUploader
-    COMMAND simple-uploader-test 
-)
-
-add_test(
-    NAME TestBlockUploader
-    COMMAND block-uploader-test
-)
-
-add_test(
-    NAME TestDownloader
-    COMMAND downloader-test
-)
-
-add_test(
-    NAME TestAzureSink
-    COMMAND azure-sink-test
-)
-
-add_test(
-    NAME TestAzureSrc
-    COMMAND azure-src-test
-)
+add_test(NAME TestSimpleUploader COMMAND simple-uploader-test)
+add_test(NAME TestBlockUploader COMMAND block-uploader-test)
+add_test(NAME TestDownloader COMMAND downloader-test)
+add_test(NAME TestAzureSink COMMAND azure-sink-test)
+add_test(NAME TestAzureSrc COMMAND azure-src-test)
