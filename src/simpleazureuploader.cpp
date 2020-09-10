@@ -105,10 +105,12 @@ namespace gst
         bg_worker.wait();
       }
 
-      SimpleAzureUploader::SimpleAzureUploader(std::string account_name, std::string account_key, bool use_https)
+      SimpleAzureUploader::SimpleAzureUploader(
+          const std::string &account_name, const std::string &account_key,
+          bool use_https = true, const std::string &blob_endpoint = std::string())
       {
         auto credential = std::make_shared<::azure::storage_lite::shared_key_credential>(account_name, account_key);
-        auto storage_account = std::make_shared<::azure::storage_lite::storage_account>(account_name, credential, use_https);
+        auto storage_account = std::make_shared<::azure::storage_lite::storage_account>(account_name, credential, use_https, blob_endpoint);
         client = std::make_shared<::azure::storage_lite::blob_client>(storage_account, AZURE_CLIENT_CONCCURRENCY);
       }
 
@@ -208,8 +210,11 @@ GstAzureUploader *gst_azure_sink_simple_uploader_new(const GstAzureSinkConfig *c
   if (uploader == NULL)
     return NULL;
   uploader->klass = defaultClass;
+  std::string account_name(config->account_name),
+      account_key(config->account_key),
+      blob_endpoint(config->blob_endpoint);
   uploader->impl = (void *)(new gst::azure::storage::SimpleAzureUploader(
-      config->account_name, config->account_key, (bool)config->use_https));
+      account_name, account_key, static_cast<bool>(config->use_https), blob_endpoint));
   uploader->data = (void *)(new std::shared_ptr<gst::azure::storage::AzureLocation>(nullptr));
   return uploader;
 }

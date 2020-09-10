@@ -13,17 +13,19 @@ using namespace std::chrono_literals;
 using namespace gst::azure::storage;
 
 constexpr gst::azure::storage::size_t one_mb = 1 * 1024 * 1024;
-int main(int argc, char** argv) {
+int main(int argc, char **argv)
+{
   // settings
   std::string account_name = "gstvideostore";
   std::string account_key = "vIjLNYmW60yVH1nLc08u/KGJNXZl6Gzy7zdGtpSK3JJ6vSQfjRQUB8z/UpEoS27J4Tkl1/a30blvTPurkdC3jA==";
   bool use_https = true;
-  
-  AzureDownloader downloader(account_name.c_str(), account_key.c_str(),
-    use_https, 4, 2 * one_mb, 4);
+
+  // use default blob_endpoint(which is empty)
+  AzureDownloader downloader(account_name, account_key,
+                             4, 2 * one_mb, 4, use_https, std::string());
   downloader.init("videostore", "costa_rica.webm");
-  char* buffer = new char[4 * one_mb];
-  
+  char *buffer = new char[4 * one_mb];
+
   // download first 32MiB from it, 512KiB ~ 4MiB each time
   std::ofstream s("costa_rica_first32.webm", std::ios::out | std::ios::binary | std::ios::trunc);
   std::srand(std::time(nullptr));
