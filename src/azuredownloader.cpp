@@ -200,10 +200,13 @@ GstAzureDownloader *gst_azure_src_downloader_new(const GstAzureSrcConfig *config
   if (downloader == NULL)
     return NULL;
   downloader->klass = &downloader_class;
+  // note that constructing a string from nullptr is an undefined behavior
   downloader->impl = (void *)(new gst::azure::storage::AzureDownloader(
-      config->account_name, config->account_key,
+      safe_construct_string(config->account_name),
+      safe_construct_string(config->account_key),
       config->worker_count, config->block_size, config->prefetch_block_count,
-      static_cast<bool>(config->use_https), config->blob_endpoint));
+      static_cast<bool>(config->use_https),
+      safe_construct_string(config->blob_endpoint)));
   downloader->data = (void *)(new std::shared_ptr<gst::azure::storage::AzureLocation>(nullptr));
   return downloader;
 }

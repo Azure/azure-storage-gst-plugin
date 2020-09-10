@@ -295,13 +295,12 @@ GstAzureUploader *gst_azure_sink_block_uploader_new(const GstAzureSinkConfig *co
   if (uploader == NULL)
     return NULL;
   uploader->klass = defaultClass;
-  std::string account_name(config->account_name),
-      account_key(config->account_key),
-      blob_endpoint(config->blob_endpoint);
   uploader->impl = (void *)(new gst::azure::storage::BlockAzureUploader(
-      account_name, account_key, config->block_size, config->worker_count,
-      config->commit_block_count, config->commit_interval_ms,
-      static_cast<bool>(config->use_https), blob_endpoint));
+      safe_construct_string(config->account_name),
+      safe_construct_string(config->account_key),
+      config->block_size, config->worker_count, config->commit_block_count, config->commit_interval_ms,
+      static_cast<bool>(config->use_https),
+      safe_construct_string(config->blob_endpoint)));
   uploader->data = (void *)(new std::shared_ptr<gst::azure::storage::AzureLocation>(nullptr));
   return uploader;
 }

@@ -210,11 +210,11 @@ GstAzureUploader *gst_azure_sink_simple_uploader_new(const GstAzureSinkConfig *c
   if (uploader == NULL)
     return NULL;
   uploader->klass = defaultClass;
-  std::string account_name(config->account_name),
-      account_key(config->account_key),
-      blob_endpoint(config->blob_endpoint);
   uploader->impl = (void *)(new gst::azure::storage::SimpleAzureUploader(
-      account_name, account_key, static_cast<bool>(config->use_https), blob_endpoint));
+      safe_construct_string(config->account_name),
+      safe_construct_string(config->account_key),
+      static_cast<bool>(config->use_https),
+      safe_construct_string(config->blob_endpoint)));
   uploader->data = (void *)(new std::shared_ptr<gst::azure::storage::AzureLocation>(nullptr));
   return uploader;
 }

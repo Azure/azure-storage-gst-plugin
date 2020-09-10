@@ -11,10 +11,14 @@ using namespace azure::storage_lite;
 
 // error handling
 template <typename T>
-inline void handle(storage_outcome<T> &outcome, std::ostream &out = std::cerr) {
-    if(outcome.success()) {
+inline void handle(storage_outcome<T> &outcome, std::ostream &out = std::cerr)
+{
+    if (outcome.success())
+    {
         out << "Request succeeded." << std::endl;
-    } else {
+    }
+    else
+    {
         out << "Request failed." << std::endl;
         out << outcome.error().code << '(' << outcome.error().code_name << ')' << std::endl;
         out << outcome.error().message << std::endl;
@@ -37,7 +41,7 @@ inline unsigned int getStreamLen(std::basic_istream<CharT> &ss)
 inline std::ostream &nullstream()
 {
     static std::ofstream os;
-    if(!os.is_open())
+    if (!os.is_open())
         os.open("/dev/null", std::ofstream::out | std::ofstream::app);
     return os;
 }
@@ -48,12 +52,20 @@ inline std::ostream &nullstream()
 
 inline std::ostream &log()
 {
-    #ifdef OUTPUT_LOG
+#ifdef OUTPUT_LOG
     static std::ostream &out = std::cerr;
-    #else
+#else
     static std::ostream &out = nullstream();
-    #endif
+#endif
     return out << "[" << std::hex << std::this_thread::get_id() << "]" << std::dec;
+}
+
+// safely construct a c++ string from a const char pointer
+// according to cppreference constructing a c++ string from a nullptr
+// is undefined behavior
+inline std::string safe_construct_string(const char *cstr)
+{
+    return cstr == nullptr ? std::string() : std::string(cstr);
 }
 
 #endif
