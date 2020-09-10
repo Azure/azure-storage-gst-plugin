@@ -222,6 +222,7 @@ void gst_azure_src_set_property(GObject *object, guint property_id,
   case PROP_PREFETCH_BLOCK_COUNT:
     gst_azure_elements_set_uint_property(azuresrc, value,
                                          &azuresrc->config.prefetch_block_count, "prefetch-block-count");
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
     break;
