@@ -95,8 +95,8 @@ void UploadWorker::stop()
 {
   log() << "Stopping." << std::endl;
   stopped = true;
-  new_cond.notify_one();
-  worker.wait();
+  new_cond.notify_one(); 
+  bg_worker.wait();
 }
 
 SimpleAzureUploader::SimpleAzureUploader(std::string account_name, std::string account_key, bool use_https)
@@ -194,7 +194,7 @@ GstAzureUploaderClass *getSimpleUploaderClass()
 }
 
 
-GstAzureUploader *gst_azure_sink_uploader_new(const GstAzureSinkConfig *config) {
+GstAzureUploader *gst_azure_sink_simple_uploader_new(const GstAzureSinkConfig *config) {
   static GstAzureUploaderClass *defaultClass = getSimpleUploaderClass();
   if(config == NULL)
     return NULL;

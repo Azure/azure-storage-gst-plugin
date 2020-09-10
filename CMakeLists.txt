@@ -26,17 +26,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 add_compile_options(-Wall)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fpic")
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpic")
 
-# use PkgConfig to configure gstreamer dependencies &
-# azure storage cpplite dependency
+# use PkgConfig to configure gstreamer dependencies
 find_package(PkgConfig)
-# use pkg-config to get Gstreamer
 pkg_check_modules(GSTREAMER REQUIRED gstreamer-1.0)
 pkg_check_modules(GSTREAMER_BASE REQUIRED gstreamer-base-1.0)
-pkg_check_modules(LIBCURL REQUIRED libcurl)
-pkg_check_modules(OPENSSL REQUIRED openssl)
 
 # find azure-storage-cpplite
 add_subdirectory(${PROJECT_SOURCE_DIR}/extern/azure-storage-cpplite)
@@ -67,6 +61,10 @@ endif()
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
     add_subdirectory(tests)
 endif()
+
+# installing
+install(TARGETS gstazureelements
+    LIBRARY DESTINATION lib/gstreamer-1.0)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})

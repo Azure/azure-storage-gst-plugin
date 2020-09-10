@@ -386,7 +386,7 @@ gst_azure_sink_start (GstBaseSink * sink)
   if(azuresink->uploader == NULL)
   {
     if (g_strcmp0(azuresink->config.blob_type, "append") == 0)
-      azuresink->uploader = gst_azure_sink_uploader_new(&azuresink->config);
+      azuresink->uploader = gst_azure_sink_simple_uploader_new(&azuresink->config);
     else if (azuresink->config.blob_type == NULL ||
       g_strcmp0(azuresink->config.blob_type, "block") == 0)
       azuresink->uploader = gst_azure_sink_block_uploader_new(&azuresink->config);

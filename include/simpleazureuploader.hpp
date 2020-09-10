@@ -27,12 +27,12 @@ class UploadWorker {
   bool finished;
   bool stopped;
   std::shared_ptr<::azure::storage_lite::blob_client> client;
-  std::future<void> worker;
+  std::future<void> bg_worker;
 public:
   UploadWorker(std::shared_ptr<AzureLocation> loc,
     std::shared_ptr<::azure::storage_lite::blob_client> client) :
     loc(loc), stream(std::move(std::make_unique<std::stringstream>())), finished(true), stopped(false),
-    client(client), worker(std::async(&UploadWorker::run, this)) {}
+    client(client), bg_worker(std::async(&UploadWorker::run, this)) {}
   ~UploadWorker() { stop(); }
   bool append(const char *, size_t);
   void run();
