@@ -1,5 +1,8 @@
 # azure-storage-gst-plugin
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Build Status](https://enyao.visualstudio.com/azure-storage-gst-plugin/_apis/build/status/github%20azure-storage-gst-plugin?branchName=master)](https://enyao.visualstudio.com/azure-storage-gst-plugin/_build/latest?definitionId=3&branchName=master)
+
 This repo contains gstreamer plugins for azure storage.
 
 ## Prerequisites
