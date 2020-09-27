@@ -13,11 +13,12 @@ This repo is tested under Ubuntu 18.04 & 20.04.
 
 ## Build
 
-This project use cmake to build.
+This project uses cmake to build.
 
 ```bash
 mkdir build
 cd build
+# to build the plugin
 cmake --build .
 # to install the plugin system-wide
 sudo cmake --build . --target install
@@ -47,25 +48,42 @@ Plugin Details:
   +-- 2 elements
 ```
 
+Use `gst-inspect-1.0 azuresink` or `gst-inspect-1.0 azuresrc` to inspect the plugin.
+If you install the plugin system-wide, you should be able to see the plugin without any additional parameters, or you can specify `GST_PLUGIN_PATH`:
+
+```bash
+cd build
+GST_PLUGIN_PATH=. gst-inspect-1.0 azuresrc
+GST_PLUGIN_PATH=. gst-inspect-1.0 azuresink
+```
+
 ## Using the plugin
 
-To test it with random snow output:
+To write random snow output to an append blob:
 
 ```bash
 cd build  # goto the library's location
 # the following three parameters are mandatory
 GST_PLUGIN_PATH=. gst-launch-1.0 -v -e videotestsrc pattern=snow ! x264enc ! matroskamux ! \
   azuresink account-name="your account name" account-key="your account key" \
-    location="container_name/blob_name"
+    location="container_name/blob_name" blob-type="append"
 ```
 
-Or if you have a webcam...
+Or write your webcam input to a block blob:
 
 ```bash
 cd build
 GST_PLUGIN_PATH=. gst-launch-1.0 -v -e v4l2src ! videoconvert ! x264enc ! flvmux ! \
   azuresink account-name="your account name" account-key="your account key" \
-    location="container_name/blob_name"
+    location="container_name/blob_name" blob-type="block"
+```
+
+You can also watch video from azure storage:
+
+```bash
+cd build
+GST_PLUGIN_PATH=. gst-launch-1.0 -v -e azuresrc location="container_name/blob_name" \
+  account-name="your account name" account-key="your account key" ! decodebin ! autovideosink
 ```
 
 # Contributing
